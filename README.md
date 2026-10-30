@@ -59,3 +59,12 @@ No separate downloading or audio transcoding is needed to develop, test or build
 ## Credits
 
 Recordings: [FreePats Hang D minor](https://github.com/freepats/hang-D-minor), **Creative Commons CC0 1.0**. Application code: MIT.
+
+## Pages hosting modes
+
+Both GitHub Pages publication modes are supported:
+
+- **GitHub Actions:** deploys the compiled `dist/` directly at `/hp/`.
+- **Deploy from branch /main:** loads committed `assets/app.js`, `assets/app.css`, and `samples/` directly at `/hp/` without redirects. The workflow keeps these compiled files current.
+
+Never link to `/hp/dist/`. The public demo URL is always `https://markxxv.github.io/hp/`.

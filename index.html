@@ -7,12 +7,17 @@
   <meta name="description" content="Handpan sampler with an ABC editor and local playlist">
   <title>Handpan Player</title>
   <script type="module">
-    // Vite defines import.meta.env in dev and compiled production.
-    // Raw branch-based GitHub Pages does not; route it to committed dist/.
+    // Vite compiles the source entry in development and GitHub Actions builds.
+    // If Pages serves main directly, load the committed production bundle in place.
     if (import.meta.env?.MODE) {
       import("./src/main.js");
     } else {
-      window.location.replace(new URL("./dist/", document.baseURI).href);
+      const stylesheet = document.createElement("link");
+      stylesheet.rel = "stylesheet";
+      stylesheet.href = "./assets/app.css";
+      document.head.append(stylesheet);
+      const entry = "./assets/app.js";
+      import(/* @vite-ignore */ entry);
     }
   </script>
 </head>

@@ -6,6 +6,9 @@ on:
     paths-ignore:
       - 'dist/**'
       - '.nojekyll'
+      - 'assets/app.js'
+      - 'assets/app.css'
+      - 'samples/**'
   workflow_dispatch:
 
 permissions:
@@ -38,11 +41,20 @@ jobs:
           npm run build
           npm run verify
           touch dist/.nojekyll
+      - name: Publish compatible assets for branch-based Pages
+        run: |
+          mkdir -p assets
+          js_files=(dist/assets/main-*.js)
+          css_files=(dist/assets/main-*.css)
+          test -f "${js_files[0]}" && test -f "${css_files[0]}"
+          cp "${js_files[0]}" assets/app.js
+          cp "${css_files[0]}" assets/app.css
+          test -s assets/app.js && test -s assets/app.css
       - name: Commit compiled site for branch-based Pages
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f dist/
+          git add -f dist/ assets/app.js assets/app.css
           if ! git diff --cached --quiet; then
             git commit -m "Build static Vite site for GitHub Pages [skip ci]"
             git push origin HEAD:main
