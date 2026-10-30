@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -27,16 +27,30 @@ jobs:
           node-version: '22'
       - name: Verify application
         run: npm test
-      - name: Install FFmpeg
+      - name: Commit original handpan samples if missing
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg
-      - name: Prepare genuine handpan samples
-        run: bash scripts/prepare-samples.sh build/samples
+          if [ ! -f samples/A3_01.mp3 ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+            bash scripts/prepare-samples.sh samples
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add samples/
+            git commit -m "Add 27 original FreePats handpan audio samples (CC0)"
+            git push origin HEAD:main
+          fi
+      - name: Verify sample files
+        run: |
+          for note in A3 D4 E4 F4 G4 A4 Bb4 C5 D5; do
+            for variant in 01 02 03; do
+              test -s "samples/${note}_0${variant}.mp3" || { echo "Missing: ${note}_0${variant}.mp3"; exit 1; }
+            done
+          done
       - name: Assemble site
         run: |
+          mkdir -p build
           cp index.html build/index.html
-          cp -R assets build/assets
+          cp -R assets samples build/
           touch build/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

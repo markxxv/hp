@@ -1,55 +1,62 @@
 # HP — Handpan Studio
 
-Static browser instrument with **real FreePats Hang recordings**, ABC notation, live music sheet, and a persistent local song library. No server, account, database, or synthesizer.
+Handpan demo with **real FreePats Hang recordings**, ABC notation, live music sheet, and a persistent local song library. No server, account, database, or synthesizer.
 
 ## Demo / GitHub Pages
 
 1. In **Settings → Pages → Build and deployment**, choose **GitHub Actions** as the source.
-2. Go to **Actions → Deploy Handpan Studio to GitHub Pages → Run workflow** (or push to main).
-3. Visit **https://markxxv.github.io/hp/** when deployment succeeds.
-
-**Note:** This repository was private when the demo was created. GitHub Pages for private repositories requires an eligible plan. If Pages is not available, switch the repo to **Public** in **Settings → General → Danger Zone → Change visibility**. GitHub Pages websites are publicly accessible even when the source repository is private.
+2. In **Actions**, run **Deploy Handpan Studio to GitHub Pages** if necessary.
+3. Visit **https://markxxv.github.io/hp/** after the deployment succeeds.
 
 ## Local run
 
-Requires git, ffmpeg, and Python 3:
+All **27 acoustic MP3 samples are committed to `samples/`** and ship with the repository. You don't need to download or generate sounds separately.
 
-~~~bash
-bash scripts/prepare-samples.sh samples
+```bash
 python3 -m http.server 8000
-~~~
+```
 
-Open http://localhost:8000. There is no package install or build step. The `npm test` command runs standalone Node.js checks.
+Open http://localhost:8000. The app is plain HTML, CSS, and JavaScript without a build step. `npm test` runs built-in Node.js checks.
 
 ## Features
 
-- Original **9 recorded pitches**: A3, D4, E4, F4, G4, A4, Bb4, C5, D5.
-- Three natural recording variations per note; no transposition of metallic overtones.
-- Web Audio API sampler, subtle adjustable reverb, volume.
-- Tap the instrument or press number keys **1–9** (outside text fields).
-- Play / pause / stop ABC compositions, with musical notation and progress.
-- Paste ABC, edit the text directly, or import an `.abc` / `.txt` file.
-- Save multiple compositions locally. Load, edit, overwrite, create, and delete.
-- Two included demo compositions, seeded only on the first visit.
+- Nine physically recorded pitches: A3, D4, E4, F4, G4, A4, Bb4, C5, D5; three natural recordings per note (27 MP3 files).
+- Audio playback through Web Audio API, adjustable reverb and volume. No pitch shifting.
+- Click/tap instrument or press number keys **1–9** outside text fields.
+- Play/pause/stop ABC compositions with score preview.
+- Paste ABC, edit text, or import an `.abc`/`.txt` file.
+- Save multiple compositions to `localStorage`; create, load, edit, overwrite, and delete.
+- Two ready-to-play examples installed on first visit.
 
-All custom compositions remain in your browser's **localStorage**. Clearing site data deletes them. Back up by copying the ABC source.
+Data is stored only in that browser. Copy the ABC source as a backup before clearing browser storage.
 
-## How audio is deployed
+## Sample provenance and deployment
 
-The GitHub Actions workflow fetches the [FreePats Hang D minor source recordings](https://github.com/freepats/hang-D-minor), transcodes 27 FLAC samples to MP3 with FFmpeg, and publishes the generated `samples/` folder with the static HTML/CSS/JavaScript. Audio files are not stored in this Git repository. The player deliberately ignores pitches not recorded by the original instrument.
+Samples: [FreePats Hang D minor](https://github.com/freepats/hang-D-minor), CC0 public domain dedication.
 
-### Licensing
+The `samples/` folder **is tracked by Git**. On a clean repository without audio files, the Actions workflow downloads original FreePats FLAC recordings, converts three performances for each pitch to MP3 via FFmpeg, and **commits them back to `main`**. Subsequent Pages deployments use the committed MP3 files directly.
 
-- Handpan recordings: FreePats Hang D minor (2022-03-30), **Creative Commons CC0 1.0**.
-- ABC notation/score rendering: [abcjs](https://www.abcjs.net/), **MIT** (loaded from pinned jsDelivr CDN).
+Manual sample regeneration:
+
+```bash
+bash scripts/prepare-samples.sh samples
+```
+
+Requires `git` and `ffmpeg`.
+
+## Licenses
+
+- Handpan recordings: FreePats Hang D minor (2022-03-30), **CC0 1.0**.
+- ABC notation: [abcjs](https://www.abcjs.net/), **MIT**, served from pinned CDN.
 - Application code: MIT.
 
-## Files
+## Structure
 
-- `index.html` — responsive interface.
-- `assets/app.js` — ABC editor, playback, UI, library.
-- `assets/audio.js` — acoustic Web Audio sampler.
-- `assets/library.js` — example melodies and localStorage CRUD.
-- `assets/style.css` — dark responsive styles.
-- `scripts/prepare-samples.sh` — source-to-MP3 conversion.
-- `.github/workflows/pages.yml` — Pages deployment.
+- `index.html` — instrument interface.
+- `assets/app.js` — ABC player, editor and controls.
+- `assets/audio.js` — genuine acoustic sampler.
+- `assets/library.js` — localStorage melodies and presets.
+- `assets/style.css` — responsive UI.
+- `samples/` — **27 recorded MP3 files committed into Git**.
+- `scripts/prepare-samples.sh` — audio conversion.
+- `.github/workflows/pages.yml` — GitHub Pages deployment.
