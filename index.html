@@ -38,8 +38,8 @@
       <div class="keyboard-tip"><span>KEYBOARD</span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><span class="keyboard-more">; ' \ · REPEAT A / D / E</span></div>
       <div class="instrument-footer">
         <div class="last-note"><span class="input-label">LAST NOTE</span><strong id="current-note">—</strong></div>
-        <label class="slider-control"><span><i data-lucide="volume-2"></i> Volume <output id="volume-display">80%</output></span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume"></label>
-        <label class="slider-control"><span><i data-lucide="waves"></i> Reverb <output id="reverb-display">20%</output></span><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Reverb"></label>
+        <label class="slider-control"><span><i data-lucide="volume-2"></i> Volume <output id="volume-display">80%</output></span><span class="slider-meter"><span class="meter-bars" aria-hidden="true"></span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume"></span></label>
+        <label class="slider-control"><span><i data-lucide="waves"></i> Reverb <output id="reverb-display">20%</output></span><span class="slider-meter"><span class="meter-bars" aria-hidden="true"></span><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Reverb"></span></label>
       </div>
       <div class="sample-status" id="sample-status" role="status">Audio loads on first interaction</div>
     </section>
@@ -54,7 +54,7 @@
         <button type="button" id="next" class="transport-small" aria-label="Next track" title="Next track"><i data-lucide="skip-forward"></i></button>
       </div>
       <div class="seek-control">
-        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Playback position">
+        <span class="slider-meter"><span class="meter-bars" aria-hidden="true"></span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Playback position"></span>
         <div class="seek-caption"><span id="elapsed">0:00</span><span id="play-state">READY</span><span id="total-time">0:00</span></div>
       </div>
       <div class="editor-top">
