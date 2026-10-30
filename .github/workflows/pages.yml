@@ -43,7 +43,7 @@ jobs:
         run: |
           for note in A3 D4 E4 F4 G4 A4 Bb4 C5 D5; do
             for variant in 01 02 03; do
-              test -s "samples/${note}_0${variant}.mp3" || { echo "Missing: ${note}_0${variant}.mp3"; exit 1; }
+              test -s "samples/${note}_${variant}.mp3" || { echo "Missing: ${note}_${variant}.mp3"; exit 1; }
             done
           done
       - name: Assemble site
