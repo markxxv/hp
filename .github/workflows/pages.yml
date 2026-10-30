@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify application
-        run: npm test
+        run: npm run check && npm test
       - name: Commit original handpan samples if missing
         run: |
           if [ ! -f samples/A3_01.mp3 ]; then

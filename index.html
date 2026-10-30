@@ -3,88 +3,74 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="theme-color" content="#101313">
-  <meta name="description" content="Handpan Studio — браузерный инструмент с реальными семплами, ABC-нотацией и локальной библиотекой мелодий.">
-  <title>HP — Handpan Studio</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <meta name="theme-color" content="#0e1110">
+  <meta name="description" content="Handpan — семплированный инструмент, ABC-редактор и плейлист в браузере">
+  <title>Handpan Player</title>
   <link rel="stylesheet" href="./assets/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/abcjs@6.7.2/dist/abcjs-basic-min.js"></script>
   <script type="module" src="./assets/app.js"></script>
 </head>
 <body>
-<div class="app">
-  <header class="header">
-    <a href="./" class="brand" aria-label="Handpan Studio">
-      <span class="brand-mark">hp<span class="brand-dot">.</span></span>
-      <span class="brand-name">HANDPAN <em>STUDIO</em></span>
-    </a>
-    <span class="header-tag"><span class="indicator"></span> SAMPLED INSTRUMENT</span>
-  </header>
-  <main>
-    <div class="intro">
-      <div>
-        <div class="eyebrow">DIGITAL INSTRUMENT / 001</div>
-        <h1>Steel, silence<br><i>&amp; resonance.</i></h1>
-        <p>Настоящий акустический Hang. Играй, сочиняй и сохраняй мелодии в браузере.</p>
-      </div>
-      <div class="intro-side"><span>01 / 09</span><span>D MINOR</span><span>FREEPATS · CC0</span></div>
-    </div>
-    <section class="workspace">
-      <div class="instrument-panel">
-        <div class="section-heading"><span>01</span><h2>Инструмент</h2><span class="section-aside">9 NOTES · D MINOR</span></div>
-        <div class="pan-outer">
-          <div class="handpan" id="handpan" aria-label="Игровые ноты handpan">
-            <div class="steel-texture" aria-hidden="true"></div>
-            <span class="handpan-engraving" aria-hidden="true">HP / D MINOR</span>
-            <button class="tone tone-1" data-midi="57" title="A3 · клавиша 1"><span>A3</span><small>01</small></button>
-            <button class="tone tone-2" data-midi="64" title="E4 · клавиша 2"><span>E4</span><small>02</small></button>
-            <button class="tone tone-3" data-midi="65" title="F4 · клавиша 3"><span>F4</span><small>03</small></button>
-            <button class="tone tone-4" data-midi="67" title="G4 · клавиша 4"><span>G4</span><small>04</small></button>
-            <button class="tone tone-5" data-midi="69" title="A4 · клавиша 5"><span>A4</span><small>05</small></button>
-            <button class="tone tone-6" data-midi="70" title="Bb4 · клавиша 6"><span>B♭4</span><small>06</small></button>
-            <button class="tone tone-7" data-midi="72" title="C5 · клавиша 7"><span>C5</span><small>07</small></button>
-            <button class="tone tone-8" data-midi="74" title="D5 · клавиша 8"><span>D5</span><small>08</small></button>
-            <button class="tone tone-center" data-midi="62" title="D4 · клавиша 9"><span>D4</span><small>DING</small></button>
-          </div>
+<main class="app">
+  <div class="workspace">
+    <section class="panel instrument-panel" aria-label="Handpan">
+      <div class="panel-heading"><h1>Handpan</h1><span class="secondary">D MINOR · 9 NOTES</span></div>
+      <div class="pan-outer">
+        <div class="handpan" id="handpan" aria-label="Инструмент Handpan">
+          <div class="steel-texture" aria-hidden="true"></div>
+          <button type="button" class="tone tone-1" data-midi="57" title="A3 · A / ;"><span>A3</span><small>A</small></button>
+          <button type="button" class="tone tone-2" data-midi="64" title="E4 · D / \"><span>E4</span><small>D</small></button>
+          <button type="button" class="tone tone-3" data-midi="65" title="F4 · F"><span>F4</span><small>F</small></button>
+          <button type="button" class="tone tone-4" data-midi="67" title="G4 · G"><span>G4</span><small>G</small></button>
+          <button type="button" class="tone tone-5" data-midi="69" title="A4 · H"><span>A4</span><small>H</small></button>
+          <button type="button" class="tone tone-6" data-midi="70" title="Bb4 · J"><span>B♭4</span><small>J</small></button>
+          <button type="button" class="tone tone-7" data-midi="72" title="C5 · K"><span>C5</span><small>K</small></button>
+          <button type="button" class="tone tone-8" data-midi="74" title="D5 · L"><span>D5</span><small>L</small></button>
+          <button type="button" class="tone tone-center" data-midi="62" title="D4 · S / '"><span>D4</span><small>S</small></button>
         </div>
-        <div class="instrument-footer">
-          <div><div class="micro-label">Сейчас звучит</div><strong id="current-note">—</strong></div>
-          <div class="volume-control"><label for="volume">Громкость</label><input id="volume" type="range" min="0" max="100" value="80" aria-label="Громкость"></div>
-          <div class="volume-control"><label for="reverb">Реверберация</label><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Реверберация"></div>
-        </div>
-        <div class="sample-status" id="sample-status" role="status">Семплы загрузятся при первом воспроизведении</div>
       </div>
-      <div class="composition-panel">
-        <div class="section-heading"><span>02</span><h2>Композиция</h2><span class="section-aside">ABC NOTATION</span></div>
-        <div class="composition-head"><div><div class="micro-label">ТЕКУЩАЯ МЕЛОДИЯ</div><h3 id="tune-name">Still Water</h3></div><span class="tempo" id="tune-tempo">56 BPM</span></div>
-        <div class="transport">
-          <button id="play" class="btn-primary" type="button"><span id="play-icon">▶</span><span id="play-label">Играть</span></button>
-          <button id="stop" class="btn-soft square" type="button" aria-label="Стоп" title="Стоп">■</button>
-          <div class="timeline"><div class="timeline-track"><div class="timeline-bar" id="timeline-bar"></div></div><div class="timeline-caption"><span id="play-state">READY</span><span id="elapsed">00:00</span></div></div>
-        </div>
-        <div class="editor-bar"><span>ABC SOURCE</span><div><button id="import-open" class="text-btn" type="button">Импорт текста</button><button id="import-file" class="text-btn" type="button">Файл .abc</button><input type="file" id="file-input" hidden accept=".abc,.txt,text/plain"></div></div>
-        <label for="abc-editor" class="visually-hidden">Редактор ABC нотации</label>
-        <textarea id="abc-editor" class="abc-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
-        <div class="editor-footer"><span id="editor-message">Изменения обновляют партитуру автоматически</span><div><button type="button" id="new-tune" class="btn-soft">＋ Новая</button><button type="button" id="save-tune" class="btn-accent">Сохранить</button></div></div>
+      <div class="keyboard-tip"><span>КЛАВИАТУРА</span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><span class="keyboard-more">; ' \ — повтор A / D / E</span></div>
+      <div class="instrument-footer">
+        <div class="last-note"><span class="input-label">Последняя нота</span><strong id="current-note">—</strong></div>
+        <label class="slider-control"><span>Громкость</span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Громкость"></label>
+        <label class="slider-control"><span>Реверберация</span><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Реверберация"></label>
       </div>
+      <div class="sample-status" id="sample-status" role="status">Звук загрузится при первом нажатии</div>
     </section>
-    <section class="score-section">
-      <div class="section-heading"><span>03</span><h2>Партитура</h2><span class="section-aside">LIVE PREVIEW</span></div>
-      <div class="score-paper" id="score"><div class="score-empty">Ноты появятся здесь</div></div>
+
+    <section class="panel composition-panel" aria-label="Редактор ABC">
+      <div class="panel-heading"><h2>Проигрыватель</h2><span class="secondary">ABC NOTATION</span></div>
+      <div class="composition-head"><div><span class="input-label">Сейчас выбрано</span><h3 id="tune-name">Still Water</h3></div><span class="tempo" id="tune-tempo">56 BPM</span></div>
+      <div class="transport">
+        <button type="button" id="prev" class="transport-small" aria-label="Предыдущая мелодия" title="Предыдущая">⏮</button>
+        <button type="button" id="play" class="play-button"><span id="play-icon">▶</span><span id="play-label">Играть</span></button>
+        <button type="button" id="stop" class="transport-small" aria-label="Стоп" title="Стоп">■</button>
+        <button type="button" id="next" class="transport-small" aria-label="Следующая мелодия" title="Следующая">⏭</button>
+      </div>
+      <div class="seek-control">
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Позиция воспроизведения">
+        <div class="seek-caption"><span id="elapsed">0:00</span><span id="play-state">ГОТОВО</span><span id="total-time">0:00</span></div>
+      </div>
+      <div class="editor-top">
+        <label for="abc-editor">ABC-код</label>
+        <div><button type="button" id="import-open" class="text-button">Вставить</button><button type="button" id="import-file" class="text-button">Файл .abc</button><input id="file-input" type="file" accept=".abc,.txt,text/plain" hidden></div>
+      </div>
+      <textarea id="abc-editor" class="abc-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+      <div class="editor-bottom"><span id="editor-message" role="status">Готово к воспроизведению</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral">+ Новая</button><button type="button" id="save-tune" class="button-gold">Сохранить</button></div></div>
     </section>
-    <section class="library-section">
-      <div class="section-heading"><span>04</span><h2>Мои мелодии</h2><span class="section-aside" id="library-count">LOCAL STORAGE</span></div>
-      <div class="library-grid" id="library"></div>
-      <p class="library-help">Композиции сохраняются только в этом браузере. Для резервной копии скопируй ABC-текст из редактора.</p>
-    </section>
-  </main>
-  <footer class="footer"><span>HP / HANDPAN STUDIO</span><span>ACOUSTIC SAMPLES BY <a href="https://freepats.zenvoid.org/ChromaticPercussion/hang.html" target="_blank" rel="noopener noreferrer">FREEPATS</a> · CC0</span></footer>
-</div>
+  </div>
+
+  <section class="playlist-panel" aria-label="Плейлист">
+    <div class="playlist-title"><h2>Плейлист</h2><span class="secondary" id="library-count">0 МЕЛОДИЙ</span></div>
+    <div id="library" class="track-list"></div>
+    <p class="storage-note">Сохранение в этом браузере (localStorage). Для резервной копии скопируй ABC-код.</p>
+  </section>
+  <footer class="footer">Акустические записи <a href="https://freepats.zenvoid.org/ChromaticPercussion/hang.html" target="_blank" rel="noopener noreferrer">FreePats</a> · CC0</footer>
+</main>
 <dialog id="import-dialog" class="import-dialog">
-  <div class="dialog-title"><h2>Импорт ABC</h2><button type="button" id="import-close" class="close-btn" aria-label="Закрыть">×</button></div>
-  <p>Вставь полный текст композиции с заголовками X:, T:, M:, L:, Q:, K:.</p>
+  <div class="dialog-title"><h2>Импорт ABC</h2><button type="button" id="import-close" class="close-button" aria-label="Закрыть">×</button></div>
+  <p>Вставь ABC-нотацию с заголовками T:, M:, L:, Q:, K:.</p>
   <textarea id="import-editor" spellcheck="false" placeholder="X:1&#10;T:Моя мелодия&#10;M:6/8&#10;L:1/8&#10;Q:3/8=56&#10;K:Dm&#10;D2 A E F E |"></textarea>
-  <div class="dialog-actions"><button type="button" id="import-cancel" class="btn-soft">Отмена</button><button type="button" id="import-apply" class="btn-accent">Импортировать</button></div>
+  <div class="dialog-actions"><button type="button" id="import-cancel" class="button-neutral">Отмена</button><button type="button" id="import-apply" class="button-gold">Импортировать</button></div>
 </dialog>
 </body>
 </html>

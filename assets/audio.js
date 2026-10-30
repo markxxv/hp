@@ -77,7 +77,7 @@ export class HandpanSampler {
     }));
   }
 
-  hit(midi, velocity = 0.77) {
+  hit(midi, velocity = 0.77, atTime = undefined) {
     const name = getNoteName(midi);
     if (!name || !this.context || this.context.state !== "running") return false;
     const options = this.buffers.get(name);
@@ -99,7 +99,8 @@ export class HandpanSampler {
       source.disconnect();
       gain.disconnect();
     };
-    source.start();
+    if (atTime === undefined) source.start();
+    else source.start(Math.max(this.context.currentTime, atTime));
     return true;
   }
 

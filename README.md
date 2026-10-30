@@ -1,6 +1,6 @@
 # HP — Handpan Studio
 
-Handpan demo with **real FreePats Hang recordings**, ABC notation, live music sheet, and a persistent local song library. No server, account, database, or synthesizer.
+Handpan player with **real FreePats Hang recordings**, ABC playback, a local playlist, keyboard pads and an ABC editor. No server, account, database, or synthesizer.
 
 ## Demo / GitHub Pages
 
@@ -23,7 +23,9 @@ Open http://localhost:8000. The app is plain HTML, CSS, and JavaScript without a
 - Nine physically recorded pitches: A3, D4, E4, F4, G4, A4, Bb4, C5, D5; three natural recordings per note (27 MP3 files).
 - Audio playback through Web Audio API, adjustable reverb and volume. No pitch shifting.
 - Click/tap instrument or press number keys **1–9** outside text fields.
-- Play/pause/stop ABC compositions with score preview.
+- Parse and play ABC compositions with Web Audio clock scheduling, pause/resume, seeking, previous/next controls.
+- Play with **A S D F G H J K L** (ascending notes). Additional keys **; ' \\** repeat A3, D4, E4.
+- The ABC parser supports note lengths, rests, chords, key signatures, accidentals, tuplets, simple repeats and broken rhythms; alternate endings are explicitly rejected.
 - Paste ABC, edit text, or import an `.abc`/`.txt` file.
 - Save multiple compositions to `localStorage`; create, load, edit, overwrite, and delete.
 - Two ready-to-play examples installed on first visit.
@@ -53,7 +55,8 @@ Requires `git` and `ffmpeg`.
 ## Structure
 
 - `index.html` — instrument interface.
-- `assets/app.js` — ABC player, editor and controls.
+- `assets/app.js` — player, editor and controls.
+- `assets/abc.js` — standalone ABC parser without CDN dependencies.
 - `assets/audio.js` — genuine acoustic sampler.
 - `assets/library.js` — localStorage melodies and presets.
 - `assets/style.css` — responsive UI.

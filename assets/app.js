@@ -1,385 +1,396 @@
-import { HandpanSampler, getNoteName } from "./audio.js";
-import { EXAMPLES, readLibrary, saveMelody, removeMelody, getTitle, getMeter, getTempo, makeId } from "./library.js";
+import {HandpanSampler, getNoteName} from "./audio.js";
+import {parseABC} from "./abc.js";
+import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./library.js";
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const editor = $("abc-editor");
 const playButton = $("play");
-const playLabel = $("play-label");
-const playIcon = $("play-icon");
-const timeline = $("timeline-bar");
-const stateLabel = $("play-state");
-const elapsed = $("elapsed");
-const engine = new HandpanSampler();
-const pads = new Map([...document.querySelectorAll(".tone")].map((button) => [Number(button.dataset.midi), button]));
-
-let currentId = null;
-let visualTune = null;
-let clock = null;
-let playing = false;
-let paused = false;
+const sampler = new HandpanSampler();
+const pads = new Map([...document.querySelectorAll(".tone")].map(node => [Number(node.dataset.midi),node]));
+const KEYS = {
+  KeyA:57, KeyS:62, KeyD:64, KeyF:65, KeyG:67, KeyH:69, KeyJ:70, KeyK:72, KeyL:74,
+  Semicolon:57, Quote:62, Backslash:64
+};
+const player = {
+  status:"idle", sequence:null, offset:0, startedAt:0, nextIndex:0,
+  ticker:null, visualTimers:[], token:0
+};
+let selectedId = null;
 let dirty = false;
-let generation = 0;
-let debounce = 0;
-let totalMilliseconds = 0;
-let unsupportedShown = false;
+let editorDebounce = null;
+let lastMessageError = false;
 
-function inform(message, error = false) {
-  const element = $("editor-message");
-  element.textContent = message;
-  element.style.color = error ? "#e6a49b" : "#89948b";
+function message(text, error = false) {
+  $("editor-message").textContent = text;
+  $("editor-message").style.color = error ? "#eea497" : "#94ac94";
+  lastMessageError = error;
 }
-
-function sampleStatus(message, error = false) {
-  const element = $("sample-status");
-  element.textContent = message;
-  element.style.color = error ? "#e6a49b" : "#8eaa96";
+function sampleStatus(text,error=false) {
+  $("sample-status").textContent = text;
+  $("sample-status").style.color = error ? "#eea497" : "#93aa94";
 }
-
-function formatTime(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  return String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+function formatTime(seconds) {
+  seconds = Math.max(0, Math.floor(seconds || 0));
+  return Math.floor(seconds/60) + ":" + String(seconds%60).padStart(2,"0");
 }
-
-function progress(value, total = totalMilliseconds) {
-  timeline.style.width = (total > 0 ? Math.min(100, Math.max(0, value / total * 100)) : 0) + "%";
-  elapsed.textContent = formatTime(value);
+function renderClock(position=player.offset) {
+  const duration = player.sequence?.duration || 0;
+  $("seek").value = duration ? String(Math.round(Math.min(1000,Math.max(0,position/duration*1000)))) : "0";
+  $("elapsed").textContent = formatTime(position);
+  $("total-time").textContent = formatTime(duration);
 }
-
-function setTransportState(label) {
-  stateLabel.textContent = label;
-  playLabel.textContent = playing ? "Пауза" : paused ? "Продолжить" : "Играть";
-  playIcon.textContent = playing ? "Ⅱ" : "▶";
-  playButton.setAttribute("aria-label", playLabel.textContent);
+function renderTransport() {
+  const labels={idle:"ГОТОВО",loading:"ЗАГРУЗКА",playing:"ИГРАЕТ",paused:"ПАУЗА",finished:"ЗАВЕРШЕНО"};
+  const playing = player.status === "playing";
+  $("play-icon").textContent=playing ? "Ⅱ" : "▶";
+  $("play-label").textContent=playing ? "Пауза" : player.status === "paused" ? "Продолжить" : "Играть";
+  $("play-state").textContent=labels[player.status] || "ГОТОВО";
+  playButton.disabled=player.status === "loading";
+  $("play").setAttribute("aria-label",$("play-label").textContent);
 }
-
 function lightPad(midi) {
-  const pad = pads.get(midi);
-  if (!pad) return;
+  const pad=pads.get(midi);
+  if(!pad) return;
   pad.classList.add("active");
-  $("current-note").textContent = getNoteName(midi);
+  $("current-note").textContent=getNoteName(midi);
   clearTimeout(pad.lightTimer);
-  pad.lightTimer = setTimeout(() => pad.classList.remove("active"), 280);
+  pad.lightTimer=setTimeout(()=>pad.classList.remove("active"),240);
 }
-
-function stop() {
-  generation++;
-  if (clock) clock.stop();
-  clock = null;
-  playing = false;
-  paused = false;
-  totalMilliseconds = 0;
-  engine.stopAll();
-  progress(0);
-  setTransportState("READY");
+function cancelClock() {
+  clearInterval(player.ticker);
+  player.ticker=null;
+  for(const timer of player.visualTimers) clearTimeout(timer);
+  player.visualTimers=[];
 }
-
-function showScore() {
-  stop();
-  const abc = editor.value.trim();
-  $("tune-name").textContent = getTitle(abc);
-  $("tune-tempo").textContent = getTempo(abc).replace(/.*=/, "") + " BPM";
-  if (!abc) {
-    visualTune = null;
-    $("score").textContent = "Вставь ABC-нотацию, чтобы увидеть партитуру";
-    inform("Введите ABC-нотацию");
-    return;
-  }
-  if (!window.ABCJS) {
-    visualTune = null;
-    inform("Не загрузилась библиотека ABCJS. Проверь интернет.", true);
-    return;
-  }
-  try {
-    const tunes = window.ABCJS.renderAbc("score", abc, {
-      responsive: "resize",
-      add_classes: true,
-      staffwidth: 800,
-      paddingtop: 10,
-      paddingleft: 5,
-      paddingright: 5,
-      paddingbottom: 5
-    });
-    if (!tunes.length) throw new Error("ABC не содержит мелодии");
-    visualTune = tunes[0];
-    const warnings = visualTune.warnings || [];
-    if (warnings.length) inform("Проверь ABC-нотацию: " + String(warnings[0]), true);
-    else inform("Партитура обновлена · " + getMeter(abc));
-  } catch (error) {
-    visualTune = null;
-    $("score").textContent = "Не удалось прочитать нотацию";
-    inform(error.message || "Ошибка ABC-нотации", true);
-  }
+function currentPosition() {
+  if(player.status!=="playing" || !sampler.context) return player.offset;
+  return Math.max(0,Math.min(player.sequence?.duration || 0,sampler.context.currentTime-player.startedAt));
 }
-
-function renderLibrary() {
-  const container = $("library");
-  container.replaceChildren();
-  let entries = [];
-  try {
-    entries = readLibrary();
-  } catch {
-    inform("LocalStorage недоступен. Разреши хранение данных в браузере.", true);
-  }
-  $("library-count").textContent = entries.length + " SAVED LOCALLY";
-  if (!entries.length) {
-    const message = document.createElement("p");
-    message.className = "library-help";
-    message.textContent = "Пока нет сохранённых мелодий. Нажми «Сохранить» в редакторе.";
-    container.append(message);
-    return;
-  }
-  entries.forEach((entry) => {
-    const card = document.createElement("article");
-    card.className = "library-card" + (entry.id === currentId ? " selected" : "");
-    const head = document.createElement("div");
-    head.className = "library-card-head";
-    const heading = document.createElement("div");
-    const title = document.createElement("div");
-    title.className = "library-card-title";
-    title.textContent = getTitle(entry.abc);
-    const sub = document.createElement("div");
-    sub.className = "library-card-label";
-    sub.textContent = getMeter(entry.abc) + " · " + getTempo(entry.abc);
-    heading.append(title, sub);
-    head.append(heading);
-    const actions = document.createElement("div");
-    actions.className = "library-actions";
-    const load = document.createElement("button");
-    load.type = "button";
-    load.className = "library-load";
-    load.textContent = entry.id === currentId ? "Открыта ✓" : "Загрузить ↗";
-    load.addEventListener("click", () => {
-      if (dirty && !confirm("Заменить несохранённые изменения?")) return;
-      useTune(entry.abc, entry.id);
-    });
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "library-delete";
-    del.textContent = "Удалить";
-    del.setAttribute("aria-label", "Удалить " + getTitle(entry.abc));
-    del.addEventListener("click", () => {
-      if (!confirm("Удалить «" + getTitle(entry.abc) + "» из этого браузера?")) return;
-      try {
-        removeMelody(entry.id);
-        if (entry.id === currentId) currentId = null;
-        renderLibrary();
-        inform("Мелодия удалена");
-      } catch {
-        inform("Не удалось удалить мелодию из LocalStorage", true);
-      }
-    });
-    actions.append(load, del);
-    card.append(head, actions);
-    container.append(card);
-  });
+function stopPlayback({reset=true,silence=true}={}) {
+  player.token++;
+  cancelClock();
+  if(silence) sampler.stopAll();
+  if(reset) player.offset=0;
+  player.status="idle";
+  renderClock();
+  renderTransport();
 }
-
-function useTune(abc, id = null) {
-  editor.value = abc;
-  currentId = id;
-  dirty = false;
-  showScore();
+function endPlayback(token) {
+  if(token!==player.token) return;
+  cancelClock();
+  player.status="finished";
+  player.offset=player.sequence.duration;
+  renderClock();
+  renderTransport();
   renderLibrary();
-  window.scrollTo({top:0, behavior:"smooth"});
 }
+function tick(token) {
+  if(token!==player.token || player.status!=="playing") return;
+  const context=sampler.context;
+  const now=context.currentTime;
+  const relative=now-player.startedAt;
+  const events=player.sequence.notes;
 
+  // Look ahead so AudioBufferSourceNode.start() happens on the audio clock,
+  // not on an imprecise JavaScript timer.
+  while(player.nextIndex<events.length && events[player.nextIndex].at<=relative+0.13) {
+    const entry=events[player.nextIndex++];
+    const when=Math.max(now+0.005,player.startedAt+entry.at);
+    let supported=0;
+    for(const pitch of entry.pitches) {
+      if(sampler.hit(pitch,0.74,when)) {
+        supported++;
+        const timer=setTimeout(()=>{if(token===player.token && player.status==="playing") lightPad(pitch)},Math.max(0,(when-now)*1000));
+        player.visualTimers.push(timer);
+      }
+    }
+    // A rest or an unsupported pitch must not block later notes.
+    void supported;
+  }
+  renderClock(Math.max(0,Math.min(player.sequence.duration,relative)));
+  if(relative>=player.sequence.duration+0.04) endPlayback(token);
+}
+function startClock(offset=0) {
+  cancelClock();
+  const token=++player.token;
+  player.offset=offset;
+  player.startedAt=sampler.context.currentTime+0.05-offset;
+  player.nextIndex=player.sequence.notes.findIndex(event=>event.at>=offset-0.0001);
+  if(player.nextIndex<0) player.nextIndex=player.sequence.notes.length;
+  player.status="playing";
+  renderTransport();
+  renderLibrary();
+  player.ticker=setInterval(()=>tick(token),25);
+  tick(token);
+}
+function pause() {
+  if(player.status!=="playing") return;
+  player.offset=currentPosition();
+  player.token++;
+  cancelClock();
+  sampler.stopAll();
+  player.status="paused";
+  renderTransport();
+  renderClock();
+  renderLibrary();
+}
 async function prepareSound() {
   try {
-    sampleStatus("Загружаем записи инструмента…");
-    await engine.ensureReady((loaded, total) => {
-      sampleStatus("Загружено " + loaded + " из " + total + " семплов");
-    });
-    sampleStatus("27 настоящих записей · инструмент готов");
+    sampleStatus("Загружаем записи Hang…");
+    await sampler.ensureReady((count,total)=>sampleStatus("Загружено "+count+" / "+total+" семплов"));
+    sampleStatus("27 записей · инструмент готов");
     return true;
-  } catch (error) {
-    sampleStatus("Загрузка не удалась: " + error.message, true);
-    inform("Нет звука. Проверь наличие файлов samples/*.mp3 и интернет.", true);
+  } catch(error) {
+    sampleStatus("Ошибка звука: "+error.message,true);
+    message("Не удалось загрузить звук: "+error.message,true);
     return false;
   }
 }
-
-async function hit(midi) {
-  const didLoad = await prepareSound();
-  if (!didLoad) return;
-  if (engine.hit(midi)) lightPad(midi);
-}
-
 async function play() {
-  if (playing) {
-    clock?.pause();
-    playing = false;
-    paused = true;
-    engine.stopAll();
-    setTransportState("PAUSED");
-    return;
-  }
-  if (paused && clock) {
-    try {
-      await engine.context.resume();
-      clock.start();
-      paused = false;
-      playing = true;
-      setTransportState("PLAYING");
-    } catch (error) {
-      inform(error.message, true);
-    }
-    return;
-  }
-  if (!visualTune) {
-    inform("Сначала введи корректную ABC-мелодию", true);
-    return;
-  }
-
-  const thisGeneration = ++generation;
-  playButton.disabled = true;
-  setTransportState("LOADING");
-  const ready = await prepareSound();
-  playButton.disabled = false;
-  if (!ready || thisGeneration !== generation) {
-    setTransportState("READY");
-    return;
-  }
-
-  unsupportedShown = false;
-  playing = true;
-  paused = false;
-  setTransportState("PLAYING");
-  try {
-    clock = new window.ABCJS.TimingCallbacks(visualTune, {
-      beatSubdivisions: 2,
-      beatCallback: (beat, totalBeats, totalTime) => {
-        if (generation !== thisGeneration || !playing) return;
-        totalMilliseconds = totalTime || 0;
-        progress(totalBeats ? beat / totalBeats * totalMilliseconds : 0);
-      },
-      eventCallback: (event) => {
-        if (generation !== thisGeneration) return;
-        if (event === null) {
-          clock = null;
-          playing = false;
-          paused = false;
-          progress(totalMilliseconds);
-          setTransportState("FINISHED");
-          return;
-        }
-        for (const note of event.midiPitches || []) {
-          if (engine.hit(note.pitch, 0.58 + Math.min(0.35, (note.volume ?? 80) / 300))) {
-            lightPad(note.pitch);
-          } else if (!getNoteName(note.pitch) && !unsupportedShown) {
-            unsupportedShown = true;
-            inform("Есть ноты вне диапазона Hang: A3, D4, E4, F4, G4, A4, Bb4, C5, D5", true);
-          }
-        }
-      }
-    });
-    clock.start();
-  } catch (error) {
-    stop();
-    inform(error.message || "Не удалось начать воспроизведение", true);
+  if(player.status==="playing") { pause(); return; }
+  if(!player.sequence) { message("Исправь ABC-код перед воспроизведением",true); return; }
+  if(player.status==="loading") return;
+  const offset=player.status==="paused" ? player.offset : 0;
+  const generation=++player.token;
+  player.status="loading";
+  renderTransport();
+  const ready=await prepareSound();
+  if(generation!==player.token) return;
+  if(!ready) { player.status="idle";renderTransport();return; }
+  startClock(offset);
+}
+async function hit(midi) {
+  if(!await prepareSound()) return;
+  if(sampler.hit(midi)) lightPad(midi);
+}
+function seekTo(position) {
+  if(!player.sequence) return;
+  const duration=player.sequence.duration;
+  const offset=Math.min(duration,Math.max(0,position));
+  const state=player.status;
+  if(state==="loading") return;
+  player.token++;
+  cancelClock();
+  sampler.stopAll();
+  player.offset=offset;
+  if(state==="playing" && offset<duration) startClock(offset);
+  else {
+    player.status=offset>=duration ? "finished" : state==="paused" ? "paused" : "idle";
+    renderTransport();
+    renderClock();
   }
 }
-
-function importText(text) {
-  if (!text.trim()) {
-    inform("Текст ABC пуст", true);
-    return false;
+function refreshEditor() {
+  stopPlayback();
+  player.sequence=null;
+  $("tune-name").textContent=getTitle(editor.value);
+  try {
+    player.sequence=parseABC(editor.value);
+    $("tune-name").textContent=player.sequence.title;
+    $("tune-tempo").textContent=player.sequence.tempoLabel+" BPM";
+    if(player.sequence.unsupported) {
+      message(player.sequence.unsupported+" нот вне строя handpan пропускаются при воспроизведении",true);
+    } else {
+      message(dirty?"Изменения ещё не сохранены":"Готово к воспроизведению");
+    }
+  } catch(error) {
+    $("tune-tempo").textContent="—";
+    message(error.message,true);
   }
-  if (dirty && !confirm("Заменить несохранённые изменения?")) return false;
-  useTune(text.trim(), null);
-  inform("ABC импортирован. Нажми «Сохранить» для добавления в библиотеку.");
+  renderClock();
+  renderLibrary();
+}
+function useTune(text,id=null) {
+  clearTimeout(editorDebounce);
+  editor.value=text;
+  selectedId=id;
+  dirty=false;
+  refreshEditor();
+  renderLibrary();
+}
+function loadEntry(entry) {
+  if(selectedId===entry.id && !dirty) return true;
+  if(dirty && !confirm("Заменить несохранённые изменения?")) return false;
+  useTune(entry.abc,entry.id);
   return true;
 }
-
-function registerEvents() {
-  $("play").addEventListener("click", play);
-  $("stop").addEventListener("click", stop);
-  for (const [midi, pad] of pads) {
-    pad.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      hit(midi);
-    });
+function readEntries() {
+  try {return readLibrary()}
+  catch(error) {
+    if(!lastMessageError) message("LocalStorage недоступен: "+error.message,true);
+    return [];
   }
-  const order = [57,64,65,67,69,70,72,74,62];
-  document.addEventListener("keydown", (event) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
-    const tag = event.target?.tagName;
-    if (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(tag) || event.target?.isContentEditable) return;
-    const index = Number(event.key) - 1;
-    if (Number.isInteger(index) && index >= 0 && index < 9) hit(order[index]);
-    if (event.code === "Space") { event.preventDefault(); play(); }
-  });
-  $("volume").addEventListener("input", (event) => engine.setVolume(Number(event.target.value) / 100));
-  $("reverb").addEventListener("input", (event) => engine.setReverb(Number(event.target.value) / 100));
-  editor.addEventListener("input", () => {
-    dirty = true;
-    inform("Несохранённые изменения");
-    clearTimeout(debounce);
-    debounce = setTimeout(showScore, 320);
-  });
-  $("save-tune").addEventListener("click", () => {
-    if (!visualTune) {
-      inform("Исправь ABC-нотацию перед сохранением", true);
-      return;
+}
+function renderLibrary() {
+  const list=$("library");
+  list.replaceChildren();
+  const entries=readEntries();
+  $("library-count").textContent=entries.length+" МЕЛОДИЙ";
+  if(!entries.length) {
+    const empty=document.createElement("p");
+    empty.className="track-empty";
+    empty.textContent="Плейлист пуст. Создай мелодию или импортируй ABC и нажми «Сохранить».";
+    list.append(empty);
+    return;
+  }
+  entries.forEach((entry,index)=>{
+    const selected=entry.id===selectedId;
+    const row=document.createElement("div");
+    row.className="track-row"+(selected?" selected":"");
+    const playTrack=document.createElement("button");
+    playTrack.type="button";
+    playTrack.className="track-play";
+    playTrack.textContent=selected && player.status==="playing"?"Ⅱ":"▶";
+    playTrack.title="Воспроизвести "+getTitle(entry.abc);
+    playTrack.setAttribute("aria-label",(selected&&player.status==="playing"?"Пауза: ":"Воспроизвести: ")+getTitle(entry.abc));
+    playTrack.addEventListener("click",()=>{
+      if(!selected || dirty) {
+        if(!loadEntry(entry)) return;
+        void play();
+      } else void play();
+    });
+    const number=document.createElement("span");
+    number.className="track-index";
+    number.textContent=String(index+1).padStart(2,"0");
+    const info=document.createElement("button");
+    info.type="button";
+    info.className="track-info";
+    const details=document.createElement("span");
+    details.className="track-details";
+    const title=document.createElement("span");
+    title.className="track-name";
+    title.textContent=getTitle(entry.abc);
+    const meta=document.createElement("span");
+    meta.className="track-meta";
+    const meter=entry.abc.match(/^M:\s*(.+)$/m)?.[1] || "—";
+    const tempo=entry.abc.match(/^Q:\s*(.+)$/m)?.[1] || "—";
+    meta.textContent=meter+" · "+tempo;
+    details.append(title,meta);
+    info.append(details);
+    if(selected) {
+      const active=document.createElement("span");
+      active.className="track-playing";
+      active.textContent=player.status==="playing"?"● Играет":player.status==="paused"?"Ⅱ Пауза":"Выбрана";
+      info.append(active);
     }
-    const id = currentId || makeId();
-    try {
-      saveMelody(id, editor.value.trim());
-      currentId = id;
-      dirty = false;
-      renderLibrary();
-      inform("Мелодия сохранена в LocalStorage");
-    } catch {
-      inform("Не удалось сохранить. Проверь настройки хранилища браузера.", true);
-    }
-  });
-  $("new-tune").addEventListener("click", () => {
-    if (dirty && !confirm("Сбросить несохранённые изменения?")) return;
-    useTune([
-      "X:1",
-      "T:Новая мелодия",
-      "M:6/8",
-      "L:1/8",
-      "Q:3/8=56",
-      "K:Dm",
-      "D2 A E F E | D3 z3 |"
-    ].join("\n"), null);
-    editor.focus();
-  });
-  const dialog = $("import-dialog");
-  $("import-open").addEventListener("click", () => {
-    $("import-editor").value = "";
-    dialog.showModal();
-  });
-  $("import-close").addEventListener("click", () => dialog.close());
-  $("import-cancel").addEventListener("click", () => dialog.close());
-  $("import-apply").addEventListener("click", () => {
-    if (importText($("import-editor").value)) dialog.close();
-  });
-  dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) dialog.close();
-  });
-  $("import-file").addEventListener("click", () => $("file-input").click());
-  $("file-input").addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (file.size > 256000) {
-      inform("Файл слишком большой. Максимум 256 КБ.", true);
-      return;
-    }
-    try {
-      importText(await file.text());
-    } catch {
-      inform("Не удалось прочитать файл", true);
-    }
+    info.setAttribute("aria-label","Выбрать мелодию "+getTitle(entry.abc));
+    info.addEventListener("click",()=>loadEntry(entry));
+    const del=document.createElement("button");
+    del.type="button";
+    del.className="track-delete";
+    del.textContent="Удалить";
+    del.setAttribute("aria-label","Удалить "+getTitle(entry.abc));
+    del.addEventListener("click",()=>{
+      if(!confirm("Удалить «"+getTitle(entry.abc)+"»?")) return;
+      try{
+        removeMelody(entry.id);
+        if(selected) {
+          stopPlayback();
+          selectedId=null;
+        }
+        renderLibrary();
+        message("Мелодия удалена");
+      }catch(error){message("Не удалось удалить: "+error.message,true)}
+    });
+    row.append(playTrack,number,info,del);
+    list.append(row);
   });
 }
-
-registerEvents();
+function skipTrack(step) {
+  const entries=readEntries();
+  if(!entries.length) return;
+  const index=entries.findIndex(entry=>entry.id===selectedId);
+  const next=index<0 ? (step>0?0:entries.length-1) : (index+step+entries.length)%entries.length;
+  if(!loadEntry(entries[next])) return;
+  void play();
+}
+function importABC(text) {
+  if(!text.trim()){message("ABC-текст пуст",true);return false}
+  try{parseABC(text)}catch(error){message("Ошибка импорта: "+error.message,true);return false}
+  if(dirty && !confirm("Заменить несохранённые изменения?")) return false;
+  useTune(text.trim(),null);
+  message("ABC импортирован — сохрани его в плейлисте");
+  return true;
+}
+function register() {
+  playButton.addEventListener("click",()=>void play());
+  $("stop").addEventListener("click",()=>stopPlayback());
+  $("prev").addEventListener("click",()=>skipTrack(-1));
+  $("next").addEventListener("click",()=>skipTrack(1));
+  for(const [midi,pad] of pads){
+    pad.addEventListener("pointerdown",event=>{
+      if(event.pointerType==="mouse"&&event.button!==0)return;
+      void hit(midi);
+    });
+  }
+  document.addEventListener("keydown",event=>{
+    if(event.altKey||event.ctrlKey||event.metaKey||event.repeat)return;
+    const target=event.target;
+    if(target?.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(target?.tagName)||$("import-dialog").open)return;
+    const midi=KEYS[event.code];
+    if(midi!==undefined){
+      event.preventDefault();
+      void hit(midi);
+    } else if(event.code==="Space"&&target?.tagName!=="BUTTON") {
+      event.preventDefault();
+      void play();
+    }
+  });
+  $("volume").addEventListener("input",event=>sampler.setVolume(Number(event.target.value)/100));
+  $("reverb").addEventListener("input",event=>sampler.setReverb(Number(event.target.value)/100));
+  $("seek").addEventListener("input",event=>{
+    const duration=player.sequence?.duration||0;
+    $("elapsed").textContent=formatTime(duration*Number(event.target.value)/1000);
+  });
+  $("seek").addEventListener("change",event=>{
+    const duration=player.sequence?.duration||0;
+    seekTo(duration*Number(event.target.value)/1000);
+  });
+  editor.addEventListener("input",()=>{
+    dirty=true;
+    clearTimeout(editorDebounce);
+    editorDebounce=setTimeout(refreshEditor,250);
+  });
+  $("save-tune").addEventListener("click",()=>{
+    clearTimeout(editorDebounce);
+    if(!player.sequence) {
+      try {player.sequence=parseABC(editor.value)} catch(error){message(error.message,true);return}
+    }
+    const id=selectedId||makeId();
+    try{
+      saveMelody(id,editor.value.trim());
+      selectedId=id;
+      dirty=false;
+      renderLibrary();
+      message("Сохранено в плейлист");
+    }catch(error){message("Ошибка сохранения: "+error.message,true)}
+  });
+  $("new-tune").addEventListener("click",()=>{
+    if(dirty&&!confirm("Удалить несохранённые изменения?"))return;
+    useTune(["X:1","T:Новая мелодия","M:6/8","L:1/8","Q:3/8=56","K:Dm","D2 A E F E | D3 z3 |"].join("\n"));
+    editor.focus();
+  });
+  const dialog=$("import-dialog");
+  $("import-open").addEventListener("click",()=>{$("import-editor").value="";dialog.showModal()});
+  $("import-close").addEventListener("click",()=>dialog.close());
+  $("import-cancel").addEventListener("click",()=>dialog.close());
+  $("import-apply").addEventListener("click",()=>{if(importABC($("import-editor").value))dialog.close()});
+  dialog.addEventListener("click",event=>{if(event.target===dialog)dialog.close()});
+  $("import-file").addEventListener("click",()=>$("file-input").click());
+  $("file-input").addEventListener("change",async event=>{
+    const file=event.target.files?.[0];
+    event.target.value="";
+    if(!file)return;
+    if(file.size>256000){message("Максимальный размер ABC-файла 256 КБ",true);return}
+    try{importABC(await file.text())}catch(error){message("Файл не прочитан: "+error.message,true)}
+  });
+}
+register();
 try {
-  const saved = readLibrary();
-  useTune((saved[0] || EXAMPLES[0]).abc, saved[0]?.id || null);
-} catch {
-  useTune(EXAMPLES[0].abc, null);
-  inform("Хранилище браузера недоступно — мелодии не будут сохраняться.", true);
+  const saved=readLibrary();
+  const initial=saved[0]||EXAMPLES[0];
+  useTune(initial.abc,saved.length?initial.id:null);
+} catch(error) {
+  useTune(EXAMPLES[0].abc,null);
+  message("Хранилище браузера недоступно: "+error.message,true);
 }

@@ -1,1 +1,10 @@
-{"name":"hp-handpan-studio","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test","check":"node --check assets/app.js && node --check assets/audio.js && node --check assets/library.js"}}
+{
+  "name": "hp-handpan-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check assets/app.js && node --check assets/audio.js && node --check assets/abc.js && node --check assets/library.js"
+  }
+}
