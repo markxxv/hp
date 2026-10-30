@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Convert FreePats Hang D minor CC0 FLAC samples to browser-compatible MP3.
 set -euo pipefail
-OUT="${1:-samples}"
+OUT="${1:-public/samples}"
 command -v git >/dev/null || { echo "git is required" >&2; exit 1; }
 command -v ffmpeg >/dev/null || { echo "ffmpeg is required" >&2; exit 1; }
 mkdir -p "$OUT"

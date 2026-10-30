@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {parseABC} from "../assets/abc.js";
-import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "../assets/library.js";
+import {parseABC} from "../src/abc.js";
+import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "../src/library.js";
 
 test("Play button and physical keyboard actually trigger the sampler",async()=>{
   const data=new Map();
@@ -40,7 +40,7 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
     setVolume(){}
     setReverb(){}
   }
-  const script=readFileSync(new URL("../assets/app.js",import.meta.url),"utf8").replace(/^import .*;\n/gm,"");
+  const script=readFileSync(new URL("../src/main.js",import.meta.url),"utf8").replace(/^import .*;\n/gm,"");
   const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
   execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,()=>true,()=>1,()=>{},()=>0,()=>{});
   assert.equal(get("library").children.length,2);

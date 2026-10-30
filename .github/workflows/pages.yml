@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -25,36 +25,29 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify application
-        run: npm run check && npm test
-      - name: Commit original handpan samples if missing
+      - name: Install dependencies
         run: |
-          if [ ! -f samples/A3_01.mp3 ]; then
-            sudo apt-get update -qq
-            sudo apt-get install -y ffmpeg
-            bash scripts/prepare-samples.sh samples
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Check JavaScript and run tests
+        run: npm run check && npm test
+      - name: Build with Vite
+        run: npm run build && npm run verify
+      - name: Commit initial package-lock.json
+        run: |
+          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add samples/
-            git commit -m "Add 27 original FreePats handpan audio samples (CC0)"
+            git add package-lock.json
+            git commit -m "Lock Vite dependencies for reproducible builds"
             git push origin HEAD:main
           fi
-      - name: Verify sample files
-        run: |
-          for note in A3 D4 E4 F4 G4 A4 Bb4 C5 D5; do
-            for variant in 01 02 03; do
-              test -s "samples/${note}_${variant}.mp3" || { echo "Missing: ${note}_${variant}.mp3"; exit 1; }
-            done
-          done
-      - name: Assemble site
-        run: |
-          mkdir -p build
-          cp index.html build/index.html
-          cp -R assets samples build/
-          touch build/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4

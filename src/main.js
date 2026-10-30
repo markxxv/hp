@@ -1,4 +1,5 @@
-import {HandpanSampler, getNoteName} from "./audio.js?v=2";
+import "./style.css";
+import {HandpanSampler, getNoteName} from "./audio.js";
 import {parseABC} from "./abc.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./library.js";
 

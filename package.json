@@ -1,10 +1,20 @@
 {
   "name": "hp-handpan-studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "check": "node --check src/main.js && node --check src/abc.js && node --check src/audio.js && node --check src/library.js && node --check vite.config.js",
     "test": "node --test",
-    "check": "node --check assets/app.js && node --check assets/audio.js && node --check assets/abc.js && node --check assets/library.js"
+    "verify": "node scripts/verify-dist.mjs"
+  },
+  "devDependencies": {
+    "vite": "8.3.5"
   }
 }

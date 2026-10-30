@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { NOTES, getNoteName, getSamplePaths } from "../assets/audio.js";
-import { EXAMPLES, getTitle, getMeter, getTempo, readLibrary, saveMelody, removeMelody } from "../assets/library.js";
+import { NOTES, getNoteName, getSamplePaths } from "../src/audio.js";
+import { EXAMPLES, getTitle, getMeter, getTempo, readLibrary, saveMelody, removeMelody } from "../src/library.js";
 
 function storage() {
   const values = new Map();

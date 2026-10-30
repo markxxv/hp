@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {parseABC} from "../assets/abc.js";
-import {EXAMPLES} from "../assets/library.js";
-import {HandpanSampler} from "../assets/audio.js";
+import {parseABC} from "../src/abc.js";
+import {EXAMPLES} from "../src/library.js";
+import {HandpanSampler} from "../src/audio.js";
 
 test("both bundled melodies have audible notes, full repetitions, and increasing event times", () => {
   for(const item of EXAMPLES) {

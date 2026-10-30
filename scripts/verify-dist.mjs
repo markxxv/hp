@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import {existsSync, readFileSync, readdirSync, statSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+import path from "node:path";
+
+const dir=fileURLToPath(new URL("../dist/", import.meta.url));
+const file=(name)=>path.join(dir,name);
+assert.ok(existsSync(file("index.html")),"dist/index.html not built");
+const html=readFileSync(file("index.html"),"utf8");
+assert.match(html, /(?:src|href)="\.\/assets\/[^"]+\.js"/, "compiled JS reference missing");
+assert.match(html, /(?:src|href)="\.\/assets\/[^"]+\.css"/, "compiled CSS reference missing");
+assert.doesNotMatch(html,/src\/main\.js|assets\/app\.js|localhost:|127\.0\.0\.1:/,"unbundled entry or localhost URL found");
+const audioDir=file("samples");
+assert.ok(existsSync(audioDir),"dist/samples directory missing");
+const expected=["A3","D4","E4","F4","G4","A4","Bb4","C5","D5"]
+  .flatMap(note=>["01","02","03"].map(take=>note+"_"+take+".mp3"));
+const soundFiles=readdirSync(audioDir).filter(name=>name.endsWith(".mp3"));
+assert.deepEqual(soundFiles.sort(), expected.sort(), "incorrect handpan sample set");
+for (const name of expected) {
+  assert.ok(statSync(path.join(audioDir,name)).size>1000, "empty recording: "+name);
+}
+const bundles=readdirSync(file("assets")).filter(name=>name.endsWith(".js"));
+assert.ok(bundles.length>0,"missing bundled JavaScript");
+const content=bundles.map(name=>readFileSync(file("assets/"+name),"utf8")).join("\n");
+assert.ok(content.includes("samples/"),"sample URLs missing in bundle");
+console.log("Production dist verified: bundled JS/CSS and 27 original MP3 files.");
