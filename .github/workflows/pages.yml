@@ -27,6 +27,10 @@ jobs:
           node-version: '22'
       - name: Verify application
         run: npm test
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
       - name: Prepare genuine handpan samples
         run: bash scripts/prepare-samples.sh build/samples
       - name: Assemble site
