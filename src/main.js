@@ -1,9 +1,14 @@
 import "./style.css";
+import {createIcons,createElement,Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2} from "lucide";
 import {HandpanSampler, getNoteName} from "./audio.js";
 import {parseABC} from "./abc.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./library.js";
 
 const $ = id => document.getElementById(id);
+const icon = (name,size=16) => createElement(name,{width:size,height:size,"stroke-width":1.8});
+const iconSet={Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2};
+function updateSlider(input){ if(!input) return; const min=Number(input.min||0),max=Number(input.max||100);const pct=max>min?Math.round((Number(input.value)-min)*100/(max-min)):0;input.style?.setProperty?.("--range-fill",pct+"%"); }
+
 const editor = $("abc-editor");
 const playButton = $("play");
 const sampler = new HandpanSampler();
@@ -23,12 +28,12 @@ let lastMessageError = false;
 
 function message(text, error = false) {
   $("editor-message").textContent = text;
-  $("editor-message").style.color = error ? "#eea497" : "#94ac94";
+  $("editor-message").style.color = error ? "#ef9292" : "#a0a0a3";
   lastMessageError = error;
 }
 function sampleStatus(text,error=false) {
   $("sample-status").textContent = text;
-  $("sample-status").style.color = error ? "#eea497" : "#93aa94";
+  $("sample-status").style.color = error ? "#ef9292" : "#a0a0a3";
 }
 function formatTime(seconds) {
   seconds = Math.max(0, Math.floor(seconds || 0));
@@ -39,13 +44,14 @@ function renderClock(position=player.offset) {
   $("seek").value = duration ? String(Math.round(Math.min(1000,Math.max(0,position/duration*1000)))) : "0";
   $("elapsed").textContent = formatTime(position);
   $("total-time").textContent = formatTime(duration);
+  updateSlider($("seek"));
 }
 function renderTransport() {
-  const labels={idle:"ГОТОВО",loading:"ЗАГРУЗКА",playing:"ИГРАЕТ",paused:"ПАУЗА",finished:"ЗАВЕРШЕНО"};
+  const labels={idle:"READY",loading:"LOADING",playing:"PLAYING",paused:"PAUSED",finished:"FINISHED"};
   const playing = player.status === "playing";
-  $("play-icon").textContent=playing ? "Ⅱ" : "▶";
-  $("play-label").textContent=playing ? "Пауза" : player.status === "paused" ? "Продолжить" : "Играть";
-  $("play-state").textContent=labels[player.status] || "ГОТОВО";
+  $("play-icon").replaceChildren(icon(playing ? Pause : Play,17));
+  $("play-label").textContent=playing ? "Pause" : player.status === "paused" ? "Resume" : "Play";
+  $("play-state").textContent=labels[player.status] || "READY";
   playButton.disabled=player.status === "loading";
   $("play").setAttribute("aria-label",$("play-label").textContent);
 }
@@ -137,19 +143,19 @@ function pause() {
 }
 async function prepareSound() {
   try {
-    sampleStatus("Загружаем записи Hang…");
-    await sampler.ensureReady((count,total)=>sampleStatus("Загружено "+count+" / "+total+" семплов"));
-    sampleStatus("27 записей · инструмент готов");
+    sampleStatus("Loading acoustic samples…");
+    await sampler.ensureReady((count,total)=>sampleStatus("Loaded "+count+" / "+total+" samples"));
+    sampleStatus("27 acoustic samples · ready");
     return true;
   } catch(error) {
-    sampleStatus("Ошибка звука: "+error.message,true);
-    message("Не удалось загрузить звук: "+error.message,true);
+    sampleStatus("Audio error: "+error.message,true);
+    message("Unable to load samples: "+error.message,true);
     return false;
   }
 }
 async function play() {
   if(player.status==="playing") { pause(); return; }
-  if(!player.sequence) { message("Исправь ABC-код перед воспроизведением",true); return; }
+  if(!player.sequence) { message("Fix the ABC notation before playing",true); return; }
   if(player.status==="loading") return;
   const offset=player.status==="paused" ? player.offset : 0;
   const generation=++player.token;
@@ -189,10 +195,12 @@ function refreshEditor() {
     player.sequence=parseABC(editor.value);
     $("tune-name").textContent=player.sequence.title;
     $("tune-tempo").textContent=player.sequence.tempoLabel+" BPM";
+    $("tempo-down").disabled=player.sequence.tempo<=30;
+    $("tempo-up").disabled=player.sequence.tempo>=240;
     if(player.sequence.unsupported) {
-      message(player.sequence.unsupported+" нот вне строя handpan пропускаются при воспроизведении",true);
+      message(player.sequence.unsupported+" notes outside the handpan scale will be skipped",true);
     } else {
-      message(dirty?"Изменения ещё не сохранены":"Готово к воспроизведению");
+      message(dirty?"Unsaved changes":"Ready to play");
     }
   } catch(error) {
     $("tune-tempo").textContent="—";
@@ -211,14 +219,14 @@ function useTune(text,id=null) {
 }
 function loadEntry(entry) {
   if(selectedId===entry.id && !dirty) return true;
-  if(dirty && !confirm("Заменить несохранённые изменения?")) return false;
+  if(dirty && !confirm("Discard unsaved changes?")) return false;
   useTune(entry.abc,entry.id);
   return true;
 }
 function readEntries() {
   try {return readLibrary()}
   catch(error) {
-    if(!lastMessageError) message("LocalStorage недоступен: "+error.message,true);
+    if(!lastMessageError) message("Local storage unavailable: "+error.message,true);
     return [];
   }
 }
@@ -226,11 +234,11 @@ function renderLibrary() {
   const list=$("library");
   list.replaceChildren();
   const entries=readEntries();
-  $("library-count").textContent=entries.length+" МЕЛОДИЙ";
+  $("library-count").textContent=entries.length+" TRACKS";
   if(!entries.length) {
     const empty=document.createElement("p");
     empty.className="track-empty";
-    empty.textContent="Плейлист пуст. Создай мелодию или импортируй ABC и нажми «Сохранить».";
+    empty.textContent="Playlist is empty. Create a track or import an ABC melody, then save it.";
     list.append(empty);
     return;
   }
@@ -241,9 +249,9 @@ function renderLibrary() {
     const playTrack=document.createElement("button");
     playTrack.type="button";
     playTrack.className="track-play";
-    playTrack.textContent=selected && player.status==="playing"?"Ⅱ":"▶";
-    playTrack.title="Воспроизвести "+getTitle(entry.abc);
-    playTrack.setAttribute("aria-label",(selected&&player.status==="playing"?"Пауза: ":"Воспроизвести: ")+getTitle(entry.abc));
+    playTrack.replaceChildren(icon(selected && player.status==="playing" ? Pause : Play,16));
+    playTrack.title="Play "+getTitle(entry.abc);
+    playTrack.setAttribute("aria-label",(selected&&player.status==="playing"?"Pause: ":"Play: ")+getTitle(entry.abc));
     playTrack.addEventListener("click",()=>{
       if(!selected || dirty) {
         if(!loadEntry(entry)) return;
@@ -271,18 +279,19 @@ function renderLibrary() {
     if(selected) {
       const active=document.createElement("span");
       active.className="track-playing";
-      active.textContent=player.status==="playing"?"● Играет":player.status==="paused"?"Ⅱ Пауза":"Выбрана";
+      active.textContent=player.status==="playing"?"● Playing":player.status==="paused"?"Paused":"Selected";
       info.append(active);
     }
-    info.setAttribute("aria-label","Выбрать мелодию "+getTitle(entry.abc));
+    info.setAttribute("aria-label","Select "+getTitle(entry.abc));
     info.addEventListener("click",()=>loadEntry(entry));
     const del=document.createElement("button");
     del.type="button";
     del.className="track-delete";
-    del.textContent="Удалить";
-    del.setAttribute("aria-label","Удалить "+getTitle(entry.abc));
+    del.replaceChildren(icon(Trash2,15));
+    del.title="Delete track";
+    del.setAttribute("aria-label","Delete "+getTitle(entry.abc));
     del.addEventListener("click",()=>{
-      if(!confirm("Удалить «"+getTitle(entry.abc)+"»?")) return;
+      if(!confirm("Delete "+getTitle(entry.abc)+"?")) return;
       try{
         removeMelody(entry.id);
         if(selected) {
@@ -290,8 +299,8 @@ function renderLibrary() {
           selectedId=null;
         }
         renderLibrary();
-        message("Мелодия удалена");
-      }catch(error){message("Не удалось удалить: "+error.message,true)}
+        message("Track deleted");
+      }catch(error){message("Delete failed: "+error.message,true)}
     });
     row.append(playTrack,number,info,del);
     list.append(row);
@@ -306,18 +315,50 @@ function skipTrack(step) {
   void play();
 }
 function importABC(text) {
-  if(!text.trim()){message("ABC-текст пуст",true);return false}
-  try{parseABC(text)}catch(error){message("Ошибка импорта: "+error.message,true);return false}
-  if(dirty && !confirm("Заменить несохранённые изменения?")) return false;
+  if(!text.trim()){message("ABC text is empty",true);return false}
+  try{parseABC(text)}catch(error){message("Import failed: "+error.message,true);return false}
+  if(dirty && !confirm("Discard unsaved changes?")) return false;
   useTune(text.trim(),null);
-  message("ABC импортирован — сохрани его в плейлисте");
+  message("ABC imported. Save it to add it to your playlist.");
   return true;
 }
+
+function adjustTempo(delta) {
+  if(!player.sequence || player.status==="loading") return;
+  const bpm=Math.max(30,Math.min(240,player.sequence.tempo+delta));
+  if(bpm===player.sequence.tempo) return;
+  const oldDuration=player.sequence.duration;
+  const ratio=oldDuration>0?currentPosition()/oldDuration:0;
+  const wasPlaying=player.status==="playing";
+  const wasPaused=player.status==="paused";
+  const current=editor.value;
+  const next=/^Q:[^\n]*$/m.test(current)
+    ? current.replace(/^Q:[^\n]*$/m,line=>line.replace(/\d+(?:\.\d+)?\s*$/,String(bpm)))
+    : current.replace(/^K:/m,"Q:1/4="+bpm+"\nK:");
+  if(next===current){message("Unable to update ABC tempo",true);return}
+  editor.value=next;
+  dirty=true;
+  clearTimeout(editorDebounce);
+  refreshEditor();
+  if(player.sequence) {
+    const offset=player.sequence.duration*ratio;
+    if(wasPlaying && sampler.context?.state==="running") startClock(offset);
+    else if(wasPaused) {
+      player.offset=offset;
+      player.status="paused";
+      renderTransport();
+      renderClock(offset);
+    }
+  }
+}
+
 function register() {
   playButton.addEventListener("click",()=>void play());
   $("stop").addEventListener("click",()=>stopPlayback());
   $("prev").addEventListener("click",()=>skipTrack(-1));
   $("next").addEventListener("click",()=>skipTrack(1));
+  $("tempo-down").addEventListener("click",()=>adjustTempo(-5));
+  $("tempo-up").addEventListener("click",()=>adjustTempo(5));
   for(const [midi,pad] of pads){
     pad.addEventListener("pointerdown",event=>{
       if(event.pointerType==="mouse"&&event.button!==0)return;
@@ -337,9 +378,10 @@ function register() {
       void play();
     }
   });
-  $("volume").addEventListener("input",event=>sampler.setVolume(Number(event.target.value)/100));
-  $("reverb").addEventListener("input",event=>sampler.setReverb(Number(event.target.value)/100));
+  $("volume").addEventListener("input",event=>{sampler.setVolume(Number(event.target.value)/100);$("volume-display").textContent=event.target.value+"%";updateSlider(event.target)});
+  $("reverb").addEventListener("input",event=>{sampler.setReverb(Number(event.target.value)/100);$("reverb-display").textContent=event.target.value+"%";updateSlider(event.target)});
   $("seek").addEventListener("input",event=>{
+    updateSlider(event.target);
     const duration=player.sequence?.duration||0;
     $("elapsed").textContent=formatTime(duration*Number(event.target.value)/1000);
   });
@@ -363,12 +405,12 @@ function register() {
       selectedId=id;
       dirty=false;
       renderLibrary();
-      message("Сохранено в плейлист");
-    }catch(error){message("Ошибка сохранения: "+error.message,true)}
+      message("Saved to playlist");
+    }catch(error){message("Save failed: "+error.message,true)}
   });
   $("new-tune").addEventListener("click",()=>{
-    if(dirty&&!confirm("Удалить несохранённые изменения?"))return;
-    useTune(["X:1","T:Новая мелодия","M:6/8","L:1/8","Q:3/8=56","K:Dm","D2 A E F E | D3 z3 |"].join("\n"));
+    if(dirty&&!confirm("Discard unsaved changes?"))return;
+    useTune(["X:1","T:New melody","M:6/8","L:1/8","Q:3/8=56","K:Dm","D2 A E F E | D3 z3 |"].join("\n"));
     editor.focus();
   });
   const dialog=$("import-dialog");
@@ -382,16 +424,20 @@ function register() {
     const file=event.target.files?.[0];
     event.target.value="";
     if(!file)return;
-    if(file.size>256000){message("Максимальный размер ABC-файла 256 КБ",true);return}
-    try{importABC(await file.text())}catch(error){message("Файл не прочитан: "+error.message,true)}
+    if(file.size>256000){message("ABC files must be under 256 KB",true);return}
+    try{importABC(await file.text())}catch(error){message("Unable to read file: "+error.message,true)}
   });
 }
 register();
+createIcons({icons:iconSet,attrs:{"stroke-width":1.8,width:16,height:16}});
+updateSlider($("volume"));
+updateSlider($("reverb"));
+updateSlider($("seek"));
 try {
   const saved=readLibrary();
   const initial=saved[0]||EXAMPLES[0];
   useTune(initial.abc,saved.length?initial.id:null);
 } catch(error) {
   useTune(EXAMPLES[0].abc,null);
-  message("Хранилище браузера недоступно: "+error.message,true);
+  message("Browser storage unavailable: "+error.message,true);
 }

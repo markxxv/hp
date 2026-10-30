@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {getNoteName} from "../src/audio.js";
 import {parseABC} from "../src/abc.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "../src/library.js";
 
@@ -41,14 +42,14 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
     setReverb(){}
   }
   const script=readFileSync(new URL("../src/main.js",import.meta.url),"utf8").replace(/^import .*;\n/gm,"");
-  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
-  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,()=>true,()=>1,()=>{},()=>0,()=>{});
+  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","getNoteName","createIcons","createElement","Play","Pause","SkipBack","SkipForward","Square","Plus","Minus","ClipboardPaste","FileUp","Code2","Save","Check","ListMusic","Volume2","Waves","Trash2","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
+  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,getNoteName,()=>{},()=>new Element(),...Array(16).fill("icon"),()=>true,()=>1,()=>{},()=>0,()=>{});
   assert.equal(get("library").children.length,2);
   assert.match(get("total-time").textContent,/^\d+:\d\d$/);
   assert.equal(get("tune-name").textContent,"Still Water");
   get("play").listeners.click[0]();
   for(let i=0;i<8;i++)await Promise.resolve();
-  assert.equal(get("play-state").textContent,"ИГРАЕТ");
+  assert.equal(get("play-state").textContent,"PLAYING");
   assert.equal(hits[0].midi,62);
   assert.ok(hits[0].atTime>0,"note must be scheduled on Web Audio clock");
   const keyEvent={code:"KeyA",target:{tagName:"BODY"},preventDefault(){}};

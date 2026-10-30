@@ -35,7 +35,7 @@ export class HandpanSampler {
   async ensureReady(onProgress = () => {}) {
     if (!this.context) {
       const Context = window.AudioContext || window.webkitAudioContext;
-      if (!Context) throw new Error("Web Audio API не поддерживается браузером");
+      if (!Context) throw new Error("Your browser does not support Web Audio");
       const ctx = new Context();
       this.context = ctx;
       this.master = ctx.createGain();
@@ -67,7 +67,7 @@ export class HandpanSampler {
     let done = 0;
     await Promise.all(paths.map(async (path) => {
       const response = await fetch(new URL(path, document.baseURI));
-      if (!response.ok) throw new Error("Семпл недоступен: " + path + " (" + response.status + ")");
+      if (!response.ok) throw new Error("Missing sample: " + path + " (" + response.status + ")");
       const data = await response.arrayBuffer();
       const buffer = await this.context.decodeAudioData(data);
       const name = path.split("/").pop().split("_")[0];

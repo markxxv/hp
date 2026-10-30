@@ -11,17 +11,17 @@ const AVAILABLE = new Set([57,62,64,65,67,69,70,72,74]);
 function fraction(input) {
   const [numerator, denominator = "1"] = input.split("/");
   const n = Number(numerator), d = Number(denominator);
-  if (!Number.isFinite(n) || !Number.isFinite(d) || n <= 0 || d <= 0) throw new Error("Некорректная длительность: " + input);
+  if (!Number.isFinite(n) || !Number.isFinite(d) || n <= 0 || d <= 0) throw new Error("Invalid duration: " + input);
   return n / d;
 }
 
 function keyAccidentals(value) {
   const match = /^([A-Ga-g])([#b]?)(m(?:in)?|maj)?/i.exec(value.trim());
-  if (!match) throw new Error("Неизвестная тональность K: " + value);
+  if (!match) throw new Error("Unknown key K: " + value);
   const root = match[1].toUpperCase() + (match[2] || "");
   const minor = !!match[3] && /^m(in)?$/i.test(match[3]);
   const fifths = (minor ? MINOR : MAJOR)[root];
-  if (fifths === undefined) throw new Error("Неподдерживаемая тональность: " + value);
+  if (fifths === undefined) throw new Error("Unsupported key: " + value);
   const result = {};
   const letters = fifths > 0 ? FIFTHS_SHARPS : FIFTHS_FLATS;
   for (let i = 0; i < Math.abs(fifths); i++) result[letters[i]] = fifths > 0 ? 1 : -1;
@@ -35,12 +35,12 @@ function readLength(source, index) {
   if (!text.includes("/")) return {length: number, next: index + text.length};
   const slashCount = (match[2].match(/\//g) || []).length;
   const denominator = match[3] ? Number(match[3]) * 2 ** (slashCount - 1) : 2 ** slashCount;
-  if (!denominator || !Number.isFinite(number / denominator)) throw new Error("Некорректная длина ноты");
+  if (!denominator || !Number.isFinite(number / denominator)) throw new Error("Invalid note length");
   return {length: number / denominator, next: index + text.length};
 }
 
 function parseHeaders(source) {
-  if (typeof source !== "string" || !source.trim()) throw new Error("Введите ABC-мелодию");
+  if (typeof source !== "string" || !source.trim()) throw new Error("Enter an ABC melody");
   const headers = {};
   const music = [];
   let inMusic = false;
@@ -60,8 +60,8 @@ function parseHeaders(source) {
     }
     if (inMusic) music.push(line);
   }
-  if (!headers.K) throw new Error("Добавь заголовок K: (например K:Dm)");
-  if (!music.length) throw new Error("После K: не найдено нот");
+  if (!headers.K) throw new Error("Add a K: header (e.g. K:Dm)");
+  if (!music.length) throw new Error("No notes found after K:");
   return {headers, body:music.join(" ")};
 }
 
@@ -69,9 +69,9 @@ function getTempoInfo(q) {
   if (!q) return {bpm:100, beatValue:0.25, label:"100"};
   const raw = q.replace(/"[^"]*"/g,"").trim();
   const metronome = /(?:(\d+\/\d+)\s*=\s*)?(\d+(?:\.\d+)?)/.exec(raw);
-  if (!metronome) throw new Error("Некорректный Q: " + q);
+  if (!metronome) throw new Error("Invalid tempo Q: " + q);
   const bpm = Number(metronome[2]);
-  if (!(bpm > 0 && bpm <= 500)) throw new Error("Темп вне диапазона 1–500 BPM");
+  if (!(bpm > 0 && bpm <= 500)) throw new Error("Tempo must be between 1 and 500 BPM");
   return {bpm, beatValue:metronome[1] ? fraction(metronome[1]) : 0.25, label:String(bpm)};
 }
 
@@ -96,7 +96,7 @@ export function parseABC(source) {
     }
     duration *= nextFactor;
     nextFactor = 1;
-    if (!Number.isFinite(duration) || duration <= 0 || duration > 120) throw new Error("Недопустимая длительность ноты");
+    if (!Number.isFinite(duration) || duration <= 0 || duration > 120) throw new Error("Invalid note duration");
     // A tied pitch sustains instead of being struck again. Other notes still strike.
     if (pendingTie && pitches.length && notes.length) {
       const previous = notes[notes.length - 1];
@@ -110,7 +110,7 @@ export function parseABC(source) {
     pendingTie = false;
     notes.push({at:position, pitches, duration});
     position += duration;
-    if (notes.length > 12000 || position > 3600) throw new Error("Мелодия слишком длинная");
+    if (notes.length > 12000 || position > 3600) throw new Error("Melody is too long");
   }
 
   function pitchAt() {
@@ -140,7 +140,7 @@ export function parseABC(source) {
     if (/\s/.test(c)) { index++; continue; }
     if (c === '"' || c === '!') {
       const close = body.indexOf(c, index + 1);
-      if (close < 0) throw new Error("Незакрытая декорация ABC");
+      if (close < 0) throw new Error("Unclosed ABC decoration");
       index = close + 1;
       continue;
     }
@@ -150,7 +150,7 @@ export function parseABC(source) {
     }
     if (c === "{") {
       const close = body.indexOf("}", index + 1);
-      if (close < 0) throw new Error("Незакрытая форшлаговая группа");
+      if (close < 0) throw new Error("Unclosed grace-note group");
       index = close + 1;
       continue;
     }
@@ -170,7 +170,7 @@ export function parseABC(source) {
         notes.push({at:original.at + offset, pitches:[...original.pitches], duration:original.duration});
       }
       position += offset;
-      if (notes.length > 12000 || position > 3600) throw new Error("Мелодия слишком длинная");
+      if (notes.length > 12000 || position > 3600) throw new Error("Melody is too long");
       repeatStart = notes.length;
       repeatPosition = position;
       barAccidentals.clear();
@@ -186,11 +186,11 @@ export function parseABC(source) {
     if (c === "[") {
       if (/^\[[1-9]/.test(body.slice(index))) {
         // Alternative endings require conditional repeat control, not a flat duplication.
-        throw new Error("Первая/вторая вольта [1/[2 пока не поддерживается");
+        throw new Error("First/second endings [1/[2 are not supported yet");
       }
       if (/^\[[KMLQV]:/.test(body.slice(index))) {
         const close = body.indexOf("]",index + 1);
-        if (close < 0) throw new Error("Незакрытый встроенный ABC-заголовок");
+        if (close < 0) throw new Error("Unclosed inline ABC header");
         const field = body.slice(index + 1,close);
         if (field.startsWith("K:")) {
           Object.assign(key, keyAccidentals(field.slice(2)));
@@ -204,13 +204,13 @@ export function parseABC(source) {
       while (index < body.length && body[index] !== "]") {
         if (/\s/.test(body[index])) { index++; continue; }
         const midi = pitchAt();
-        if (midi === null) throw new Error("Неизвестная нота в аккорде");
+        if (midi === null) throw new Error("Unknown note in chord");
         pitches.push(midi);
         // Length inside chords can be specified independently; use outer length for strikes.
         const inner = readLength(body,index);
         index = inner.next;
       }
-      if (body[index] !== "]") throw new Error("Незакрытый аккорд [...]");
+      if (body[index] !== "]") throw new Error("Unclosed chord [...]");
       index++;
       const length = readLength(body,index);
       index = length.next;
@@ -220,7 +220,7 @@ export function parseABC(source) {
     if (c === "(" && /^\(\d/.test(body.slice(index))) {
       const match = /^\((\d)(?::\d(?::\d)?)?/.exec(body.slice(index));
       const n = Number(match[1]);
-      if (n < 2 || n > 9) throw new Error("Неподдерживаемая группа ABC");
+      if (n < 2 || n > 9) throw new Error("Unsupported ABC tuplet");
       tupletRemaining = n;
       tupletFactor = n === 2 || n === 4 || n === 8 ? (n + 1) / n : (n - 1) / n;
       index += match[0].length;
@@ -231,7 +231,7 @@ export function parseABC(source) {
     if (c === ">" || c === "<") {
       let count = 0;
       while (body[index] === c) { count++; index++; }
-      if (!notes.length) throw new Error("Длительность >/< без предыдущей ноты");
+      if (!notes.length) throw new Error("Broken rhythm >/< without a previous note");
       const stretch = 2 - 1 / 2**count, shrink = 1 / 2**count;
       const factor = c === ">" ? stretch : shrink;
       const previous = notes[notes.length-1];
@@ -254,25 +254,25 @@ export function parseABC(source) {
     if (/[\^_=A-Ga-g]/.test(c)) {
       const before = index;
       const midi = pitchAt();
-      if (midi === null || index === before) throw new Error("Некорректная нота около «" + body.slice(index,index+12) + "»");
+      if (midi === null || index === before) throw new Error("Invalid note near " + body.slice(index,index+12));
       const length = readLength(body,index);
       index = length.next;
       emit([midi],length.length);
       continue;
     }
     // Hard-fail on unsupported notation instead of silently pretending it plays.
-    if (/[&{}\\]/.test(c)) throw new Error("Неподдерживаемый знак ABC: " + c);
+    if (/[&{}\\]/.test(c)) throw new Error("Unsupported ABC symbol: " + c);
     unsupportedSymbols++;
-    if (unsupportedSymbols > 10) throw new Error("Неподдерживаемый ABC-синтаксис около «" + body.slice(index,index+12) + "»");
+    if (unsupportedSymbols > 10) throw new Error("Unsupported ABC syntax near " + body.slice(index,index+12));
     index++;
   }
 
-  if (!notes.some((event) => event.pitches.length)) throw new Error("В мелодии нет нот");
+  if (!notes.some((event) => event.pitches.length)) throw new Error("Melody has no notes");
   const supported = notes.reduce((sum, event) => sum + event.pitches.filter(midi => AVAILABLE.has(midi)).length, 0);
   const unsupported = notes.reduce((sum, event) => sum + event.pitches.filter(midi => !AVAILABLE.has(midi)).length, 0);
-  if (!supported) throw new Error("Нет нот из строя Handpan (A3, D4, E4, F4, G4, A4, Bb4, C5, D5)");
+  if (!supported) throw new Error("No notes in the handpan scale (A3, D4, E4, F4, G4, A4, Bb4, C5, D5)");
   return {
-    title:headers.T || "Без названия",
+    title:headers.T || "Untitled",
     meter:headers.M || "—",
     tempo:tempo.bpm,
     tempoLabel:tempo.label,

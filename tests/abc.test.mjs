@@ -40,8 +40,8 @@ test("rests, chords, accidentals, dotted and broken rhythm are interpreted", () 
 
 test("invalid and unplayable ABC fails clearly", () => {
   assert.throws(()=>parseABC("garbage"),/K:/);
-  assert.throws(()=>parseABC("X:1\nK:Dm\n^C2"),/Нет нот из строя/);
-  assert.throws(()=>parseABC("X:1\nK:Dm\n[DF"),/Незакрытый аккорд/);
+  assert.throws(()=>parseABC("X:1\nK:Dm\n^C2"),/No notes in the handpan scale/);
+  assert.throws(()=>parseABC("X:1\nK:Dm\n[DF"),/Unclosed chord/);
 });
 
 test("sampler schedules a real recorded buffer at an audio-clock timestamp", () => {

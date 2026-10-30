@@ -42,7 +42,7 @@ export function readLibrary() {
     return EXAMPLES.map((tune) => ({...tune}));
   }
   const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed)) throw new Error("Некорректная библиотека");
+  if (!Array.isArray(parsed)) throw new Error("Invalid playlist data");
   return parsed.filter((item) =>
     item && typeof item.id === "string" && typeof item.abc === "string"
   );
@@ -65,7 +65,7 @@ export function removeMelody(id) {
 }
 
 export function getTitle(abc) {
-  return abc.match(/^T:\s*(.+)$/m)?.[1]?.trim() || "Без названия";
+  return abc.match(/^T:\s*(.+)$/m)?.[1]?.trim() || "Untitled";
 }
 
 export function getMeter(abc) {

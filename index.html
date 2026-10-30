@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="theme-color" content="#0e1110">
-  <meta name="description" content="Handpan — семплированный инструмент, ABC-редактор и плейлист в браузере">
+  <meta name="description" content="Handpan sampler with an ABC editor and local playlist">
   <title>Handpan Player</title>
   <script type="module" src="./src/main.js"></script>
 </head>
@@ -12,9 +12,9 @@
 <main class="app">
   <div class="workspace">
     <section class="panel instrument-panel" aria-label="Handpan">
-      <div class="panel-heading"><h1>Handpan</h1><span class="secondary">D MINOR · 9 NOTES</span></div>
+      <div class="panel-heading"><h1>Handpan</h1><span class="secondary"><span class="status-dot"></span>D MINOR · 9 NOTES</span></div>
       <div class="pan-outer">
-        <div class="handpan" id="handpan" aria-label="Инструмент Handpan">
+        <div class="handpan" id="handpan" aria-label="Handpan instrument">
           <div class="steel-texture" aria-hidden="true"></div>
           <button type="button" class="tone tone-1" data-midi="57" title="A3 · A / ;"><span>A3</span><small>A</small></button>
           <button type="button" class="tone tone-2" data-midi="64" title="E4 · D / \"><span>E4</span><small>D</small></button>
@@ -27,49 +27,48 @@
           <button type="button" class="tone tone-center" data-midi="62" title="D4 · S / '"><span>D4</span><small>S</small></button>
         </div>
       </div>
-      <div class="keyboard-tip"><span>КЛАВИАТУРА</span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><span class="keyboard-more">; ' \ — повтор A / D / E</span></div>
+      <div class="keyboard-tip"><span>KEYBOARD</span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><span class="keyboard-more">; ' \ · REPEAT A / D / E</span></div>
       <div class="instrument-footer">
-        <div class="last-note"><span class="input-label">Последняя нота</span><strong id="current-note">—</strong></div>
-        <label class="slider-control"><span>Громкость</span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Громкость"></label>
-        <label class="slider-control"><span>Реверберация</span><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Реверберация"></label>
+        <div class="last-note"><span class="input-label">LAST NOTE</span><strong id="current-note">—</strong></div>
+        <label class="slider-control"><span><i data-lucide="volume-2"></i> Volume <output id="volume-display">80%</output></span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume"></label>
+        <label class="slider-control"><span><i data-lucide="waves"></i> Reverb <output id="reverb-display">20%</output></span><input id="reverb" type="range" min="0" max="60" value="20" aria-label="Reverb"></label>
       </div>
-      <div class="sample-status" id="sample-status" role="status">Звук загрузится при первом нажатии</div>
+      <div class="sample-status" id="sample-status" role="status">Audio loads on first interaction</div>
     </section>
 
-    <section class="panel composition-panel" aria-label="Редактор ABC">
-      <div class="panel-heading"><h2>Проигрыватель</h2><span class="secondary">ABC NOTATION</span></div>
-      <div class="composition-head"><div><span class="input-label">Сейчас выбрано</span><h3 id="tune-name">Still Water</h3></div><span class="tempo" id="tune-tempo">56 BPM</span></div>
+    <section class="panel composition-panel" aria-label="ABC editor">
+      
+      <div class="composition-head"><div><span class="input-label">NOW PLAYING</span><h3 id="tune-name">Still Water</h3></div><div class="tempo-stepper" role="group" aria-label="Playback tempo"><button type="button" id="tempo-down" class="tempo-button" aria-label="Decrease tempo by 5 BPM" title="−5 BPM"><i data-lucide="minus"></i></button><output id="tune-tempo" class="tempo" aria-live="polite">56 BPM</output><button type="button" id="tempo-up" class="tempo-button" aria-label="Increase tempo by 5 BPM" title="+5 BPM"><i data-lucide="plus"></i></button></div></div>
       <div class="transport">
-        <button type="button" id="prev" class="transport-small" aria-label="Предыдущая мелодия" title="Предыдущая">⏮</button>
-        <button type="button" id="play" class="play-button"><span id="play-icon">▶</span><span id="play-label">Играть</span></button>
-        <button type="button" id="stop" class="transport-small" aria-label="Стоп" title="Стоп">■</button>
-        <button type="button" id="next" class="transport-small" aria-label="Следующая мелодия" title="Следующая">⏭</button>
+        <button type="button" id="prev" class="transport-small" aria-label="Previous track" title="Previous track"><i data-lucide="skip-back"></i></button>
+        <button type="button" id="play" class="play-button"><span id="play-icon" class="button-icon"><i data-lucide="play"></i></span><span id="play-label">Play</span></button>
+        <button type="button" id="stop" class="transport-small" aria-label="Stop" title="Stop"><i data-lucide="square"></i></button>
+        <button type="button" id="next" class="transport-small" aria-label="Next track" title="Next track"><i data-lucide="skip-forward"></i></button>
       </div>
       <div class="seek-control">
-        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Позиция воспроизведения">
-        <div class="seek-caption"><span id="elapsed">0:00</span><span id="play-state">ГОТОВО</span><span id="total-time">0:00</span></div>
+        <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Playback position">
+        <div class="seek-caption"><span id="elapsed">0:00</span><span id="play-state">READY</span><span id="total-time">0:00</span></div>
       </div>
       <div class="editor-top">
-        <label for="abc-editor">ABC-код</label>
-        <div><button type="button" id="import-open" class="text-button">Вставить</button><button type="button" id="import-file" class="text-button">Файл .abc</button><input id="file-input" type="file" accept=".abc,.txt,text/plain" hidden></div>
+        <label for="abc-editor"><i data-lucide="code-2"></i> ABC EDITOR</label>
+        <div><button type="button" id="import-open" class="text-button"><i data-lucide="clipboard-paste"></i> Paste</button><button type="button" id="import-file" class="text-button"><i data-lucide="file-up"></i> Import</button><input id="file-input" type="file" accept=".abc,.txt,text/plain" hidden></div>
       </div>
       <textarea id="abc-editor" class="abc-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
-      <div class="editor-bottom"><span id="editor-message" role="status">Готово к воспроизведению</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral">+ Новая</button><button type="button" id="save-tune" class="button-gold">Сохранить</button></div></div>
+      <div class="editor-bottom"><span id="editor-message" role="status">Ready to play</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral"><i data-lucide="plus"></i> New</button><button type="button" id="save-tune" class="button-gold"><i data-lucide="save"></i> Save</button></div></div>
     </section>
   </div>
 
-  <section class="playlist-panel" aria-label="Плейлист">
-    <div class="playlist-title"><h2>Плейлист</h2><span class="secondary" id="library-count">0 МЕЛОДИЙ</span></div>
+  <section class="playlist-panel" aria-label="Playlist">
+    <div class="playlist-title"><h2><i data-lucide="list-music"></i> Playlist</h2><span class="secondary" id="library-count">0 TRACKS</span></div>
     <div id="library" class="track-list"></div>
-    <p class="storage-note">Сохранение в этом браузере (localStorage). Для резервной копии скопируй ABC-код.</p>
+    <p class="storage-note">Tracks are saved locally in this browser. Copy ABC text to back up your music.</p>
   </section>
-  <footer class="footer">Акустические записи <a href="https://freepats.zenvoid.org/ChromaticPercussion/hang.html" target="_blank" rel="noopener noreferrer">FreePats</a> · CC0</footer>
 </main>
 <dialog id="import-dialog" class="import-dialog">
-  <div class="dialog-title"><h2>Импорт ABC</h2><button type="button" id="import-close" class="close-button" aria-label="Закрыть">×</button></div>
-  <p>Вставь ABC-нотацию с заголовками T:, M:, L:, Q:, K:.</p>
-  <textarea id="import-editor" spellcheck="false" placeholder="X:1&#10;T:Моя мелодия&#10;M:6/8&#10;L:1/8&#10;Q:3/8=56&#10;K:Dm&#10;D2 A E F E |"></textarea>
-  <div class="dialog-actions"><button type="button" id="import-cancel" class="button-neutral">Отмена</button><button type="button" id="import-apply" class="button-gold">Импортировать</button></div>
+  <div class="dialog-title"><h2>Import ABC</h2><button type="button" id="import-close" class="close-button" aria-label="Close">×</button></div>
+  <p>Paste a melody in ABC notation with T:, M:, L:, Q: and K: headers.</p>
+  <textarea id="import-editor" spellcheck="false" placeholder="X:1&#10;T:My melody&#10;M:6/8&#10;L:1/8&#10;Q:3/8=56&#10;K:Dm&#10;D2 A E F E |"></textarea>
+  <div class="dialog-actions"><button type="button" id="import-cancel" class="button-neutral">Cancel</button><button type="button" id="import-apply" class="button-gold"><i data-lucide="check"></i> Import</button></div>
 </dialog>
 </body>
 </html>
