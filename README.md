@@ -10,6 +10,10 @@ Handpan player with **real FreePats Hang recordings**, ABC playback, a local pla
 
 ## Local run
 
+```bash
+git clone https://github.com/markxxv/hp.git
+```
+
 All **27 acoustic MP3 samples are committed to `samples/`** and ship with the repository. You don't need to download or generate sounds separately.
 
 ```bash
