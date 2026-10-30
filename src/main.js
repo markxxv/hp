@@ -7,7 +7,7 @@ import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./li
 const $ = id => document.getElementById(id);
 const icon = (name,size=16) => createElement(name,{width:size,height:size,"stroke-width":1.8});
 const iconSet={Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2};
-function updateSlider(input){ if(!input) return; const min=Number(input.min||0),max=Number(input.max||100);const pct=max>min?Math.round((Number(input.value)-min)*100/(max-min)):0;input.style?.setProperty?.("--range-fill",pct+"%"); }
+function updateSlider(input){ if(!input) return; const min=Number(input.min||0),max=Number(input.max||100);const pct=max>min?Math.round((Number(input.value)-min)*100/(max-min)):0;input.style?.setProperty?.("--range-fill",pct+"%");input.closest?.(".slider-meter")?.style?.setProperty?.("--range-fill",pct+"%"); }
 
 const editor = $("abc-editor");
 const playButton = $("play");
