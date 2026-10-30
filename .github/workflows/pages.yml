@@ -3,6 +3,9 @@ name: Deploy Handpan Studio to GitHub Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'dist/**'
+      - '.nojekyll'
   workflow_dispatch:
 
 permissions:
@@ -25,24 +28,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
-      - name: Check JavaScript and run tests
+        run: npm ci --no-audit --no-fund
+      - name: Check and test
         run: npm run check && npm test
-      - name: Build with Vite
-        run: npm run build && npm run verify
-      - name: Commit initial package-lock.json
+      - name: Build and verify production output
         run: |
-          if ! git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add package-lock.json
-            git commit -m "Lock Vite dependencies for reproducible builds"
+          npm run build
+          npm run verify
+          touch dist/.nojekyll
+      - name: Commit compiled site for branch-based Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f dist/
+          if ! git diff --cached --quiet; then
+            git commit -m "Build static Vite site for GitHub Pages [skip ci]"
             git push origin HEAD:main
           fi
       - uses: actions/configure-pages@v5

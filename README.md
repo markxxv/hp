@@ -30,7 +30,7 @@ Additional commands: `npm run check`, `npm test`, `npm run verify` (run after bu
 
 [Online demo](https://markxxv.github.io/hp/) · [CI and deployment](https://github.com/markxxv/hp/actions)
 
-Pushes to `main` automatically run the Node.js checks, tests, `vite build`, verify the build contains all 27 recordings and publish the resulting **`dist/`** folder. GitHub Pages source is **GitHub Actions**.
+Pushes to `main` run checks, tests, and `vite build`, verify all 27 recordings and publish **`dist/`** via GitHub Actions. The workflow also commits `dist/` so an existing branch-based GitHub Pages source keeps working. The repository-root HTML redirects raw branch hosting to the compiled `/dist/` site. Prefer **Settings → Pages → Source → GitHub Actions** to publish directly at `/hp/` without redirect.
 
 ## File layout
 

@@ -6,7 +6,15 @@
   <meta name="theme-color" content="#0e1110">
   <meta name="description" content="Handpan sampler with an ABC editor and local playlist">
   <title>Handpan Player</title>
-  <script type="module" src="./src/main.js"></script>
+  <script type="module">
+    // Vite defines import.meta.env in dev and compiled production.
+    // Raw branch-based GitHub Pages does not; route it to committed dist/.
+    if (import.meta.env?.MODE) {
+      import("./src/main.js");
+    } else {
+      window.location.replace(new URL("./dist/", document.baseURI).href);
+    }
+  </script>
 </head>
 <body>
 <main class="app">
