@@ -10,7 +10,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check": "node --check src/main.js && node --check src/abc.js && node --check src/audio.js && node --check src/library.js && node --check vite.config.js",
+    "check": "node --check src/main.js && node --check src/abc.js && node --check src/audio.js && node --check src/library.js && node --check vite.config.js && node --check src/exporter.js && node --check src/mp3.worker.js",
     "test": "node --test",
     "verify": "node scripts/verify-dist.mjs"
   },
@@ -18,6 +18,7 @@
     "vite": "8.3.5"
   },
   "dependencies": {
-    "lucide": "1.65.0"
+    "lucide": "1.65.0",
+    "wasm-media-encoders": "0.7.0"
   }
 }

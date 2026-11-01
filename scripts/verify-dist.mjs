@@ -23,4 +23,5 @@ assert.ok(content.includes("samples/"), "sample URLs missing in bundle");
 // Vite is responsible for resolving third-party imports. Checking generated
 // JS for the string `from "lucide"` creates false positives in embedded code.
 assert.ok(bundles.every(name=>!name.includes("main.js")), "source entry leaked into bundle");
-console.log("Production dist verified: bundled JS/CSS, no bare imports, 27 original MP3 samples.");
+assert.ok(html.includes("Export MP3"), "MP3 export UI missing from build");
+console.log("Production dist verified: bundled JS/CSS, export UI, 27 original MP3 samples.");

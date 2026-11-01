@@ -1,12 +1,13 @@
 import "./style.css";
-import {createIcons,createElement,Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2} from "lucide";
+import {createIcons,createElement,Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2,Download,FileAudio} from "lucide";
 import {HandpanSampler, getNoteName} from "./audio.js";
 import {parseABC} from "./abc.js";
+import {createMP3,downloadMP3,exportFilename,MAX_EXPORT_SECONDS} from "./exporter.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./library.js";
 
 const $ = id => document.getElementById(id);
 const icon = (name,size=16) => createElement(name,{width:size,height:size,"stroke-width":1.8});
-const iconSet={Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2};
+const iconSet={Play,Pause,SkipBack,SkipForward,Square,Plus,Minus,ClipboardPaste,FileUp,Code2,Save,Check,ListMusic,Volume2,Waves,Trash2,Download,FileAudio};
 function updateSlider(input){ if(!input) return; const min=Number(input.min||0),max=Number(input.max||100);const pct=max>min?Math.round((Number(input.value)-min)*100/(max-min)):0;input.style?.setProperty?.("--range-fill",pct+"%");input.closest?.(".slider-meter")?.style?.setProperty?.("--range-fill",pct+"%"); }
 
 const editor = $("abc-editor");
@@ -352,6 +353,50 @@ function adjustTempo(delta) {
   }
 }
 
+let exportBusy=false;
+
+function exportProgress({stage,percent,label,eta}) {
+  const panel=$("export-progress");
+  panel.hidden=false;
+  const value=Math.max(0,Math.min(100,Math.round(percent||0)));
+  $("export-percent").textContent=value+"%";
+  $("export-fill").style.width=value+"%";
+  $("export-progressbar").setAttribute("aria-valuenow",String(value));
+  $("export-stage").textContent=label||"Exporting MP3";
+  $("export-eta").textContent=stage==="done"?"Download started":
+    eta===null||eta===undefined?"Calculating time…":
+    eta<=0?"Finishing…":"About "+formatTime(eta)+" remaining";
+  panel.dataset.stage=stage;
+}
+
+async function exportCurrentMP3() {
+  if(exportBusy)return;
+  clearTimeout(editorDebounce);
+  let sequence;
+  try {
+    sequence=parseABC(editor.value);
+    if(sequence.duration>MAX_EXPORT_SECONDS)throw new Error("MP3 export supports melodies up to 10 minutes.");
+  }catch(error){message(error.message,true);return;}
+  exportBusy=true;
+  $("export-mp3").disabled=true;
+  exportProgress({stage:"loading",percent:3,label:"Preparing samples",eta:null});
+  try{
+    const ready=await prepareSound();
+    if(!ready)throw new Error("Unable to load handpan samples.");
+    exportProgress({stage:"render",percent:12,label:"Preparing offline render",eta:null});
+    const blob=await createMP3(sequence,sampler,exportProgress);
+    downloadMP3(blob,sequence.title);
+    message(exportFilename(sequence.title)+" exported successfully.");
+  }catch(error){
+    exportProgress({stage:"error",percent:0,label:"Export failed",eta:null});
+    $("export-eta").textContent=error.message||"Unknown export error";
+    message("MP3 export failed: "+(error.message||"Unknown error"),true);
+  }finally{
+    exportBusy=false;
+    $("export-mp3").disabled=false;
+  }
+}
+
 function register() {
   playButton.addEventListener("click",()=>void play());
   $("stop").addEventListener("click",()=>stopPlayback());
@@ -359,6 +404,7 @@ function register() {
   $("next").addEventListener("click",()=>skipTrack(1));
   $("tempo-down").addEventListener("click",()=>adjustTempo(-5));
   $("tempo-up").addEventListener("click",()=>adjustTempo(5));
+  $("export-mp3").addEventListener("click",()=>void exportCurrentMP3());
   for(const [midi,pad] of pads){
     pad.addEventListener("pointerdown",event=>{
       if(event.pointerType==="mouse"&&event.button!==0)return;

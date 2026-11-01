@@ -42,8 +42,8 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
     setReverb(){}
   }
   const script=readFileSync(new URL("../src/main.js",import.meta.url),"utf8").replace(/^import .*;\n/gm,"");
-  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","getNoteName","createIcons","createElement","Play","Pause","SkipBack","SkipForward","Square","Plus","Minus","ClipboardPaste","FileUp","Code2","Save","Check","ListMusic","Volume2","Waves","Trash2","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
-  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,getNoteName,()=>{},()=>new Element(),...Array(16).fill("icon"),()=>true,()=>1,()=>{},()=>0,()=>{});
+  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","getNoteName","createIcons","createElement","Play","Pause","SkipBack","SkipForward","Square","Plus","Minus","ClipboardPaste","FileUp","Code2","Save","Check","ListMusic","Volume2","Waves","Trash2","Download","FileAudio","createMP3","downloadMP3","exportFilename","MAX_EXPORT_SECONDS","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
+  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,getNoteName,()=>{},()=>new Element(),...Array(18).fill("icon"),async(_sequence,_sampler,progress)=>{progress({stage:"done",percent:100,label:"MP3 ready",eta:0});return new Blob(["mp3"],{type:"audio/mpeg"})},()=>{},title=>title+".mp3",600,()=>true,()=>1,()=>{},()=>0,()=>{});
   assert.equal(get("library").children.length,2);
   assert.match(get("total-time").textContent,/^\d+:\d\d$/);
   assert.equal(get("tune-name").textContent,"Still Water");
@@ -59,4 +59,14 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
   dom.events.keydown[0]({...keyEvent,code:"Semicolon"});
   for(let i=0;i<6;i++)await Promise.resolve();
   assert.equal(hits.at(-1).midi,57);
+});
+
+test("MP3 export helpers validate filenames, duration and actual acoustic samples", async()=>{
+  const {exportFilename,exportDuration,MAX_EXPORT_SECONDS}=await import("../src/exporter.js");
+  assert.equal(exportFilename("My / Sea: Ambient"),"My Sea Ambient.mp3");
+  assert.equal(exportFilename(""),"Handpan.mp3");
+  assert.equal(MAX_EXPORT_SECONDS,600);
+  const fake={buffers:new Map([["D4",[{duration:2.5}]]])};
+  assert.ok(exportDuration({notes:[{at:0,pitches:[62]}],duration:9},fake)>12);
+  assert.throws(()=>exportDuration({notes:[],duration:601},fake),/10 minutes/);
 });

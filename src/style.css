@@ -129,3 +129,20 @@ svg{flex-shrink:0;display:block}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 
 @media(max-width:767px){.keyboard-tip{display:none}}
+
+/* Compact export feedback, consistent with the monochrome player controls. */
+.export-progress{margin-top:12px;padding:13px 14px 12px;background:#1f1f24;border-radius:10px;min-width:0}
+.export-progress[hidden]{display:none}
+.export-progress-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#e8e8eb;font:10px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.09em}
+.export-progress-head>span{display:flex;align-items:center;gap:8px}
+.export-progress-head svg{width:14px;height:14px;color:#bdbdc5}
+.export-progress-head output{color:#efeff1;min-width:35px;text-align:right}
+.export-progressbar{height:5px;margin-top:12px;overflow:hidden;border-radius:5px;background:#39393f}
+.export-progressbar>span{display:block;width:0;height:100%;background:#f1f1f3;border-radius:5px;transition:width .16s ease}
+.export-progress[data-stage="render"] .export-progressbar>span{background:repeating-linear-gradient(100deg,#b9b9c3 0 14px,#e8e8f0 14px 28px);background-size:60px 100%;animation:export-render .8s linear infinite}
+.export-progress[data-stage="error"] .export-progressbar>span{background:#edaaaa}
+.export-progress-detail{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-top:9px;font-size:10px;line-height:1.4;color:#9f9fa8}
+.export-progress-detail span:last-child{text-align:right;color:#c4c4cc;font-variant-numeric:tabular-nums}
+@keyframes export-render{to{background-position:60px 0}}
+@media(max-width:600px){.editor-actions{flex-wrap:wrap}.editor-actions button{padding:0 10px;font-size:11px}.export-progress{padding:12px}.export-progress-detail{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.export-progress[data-stage="render"] .export-progressbar>span{animation:none}}
