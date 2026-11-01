@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0e1110">
   <meta name="description" content="Handpan sampler with an ABC editor and local playlist">
   <title>Handpan Player</title>
-  <script type="module" crossorigin src="./assets/index-BLA6k7KD.js"></script>
+  <script type="module" crossorigin src="./assets/index-DAM78HkM.js"></script>
 </head>
 <body>
 <main class="app">
@@ -54,8 +54,13 @@
         <div><button type="button" id="import-open" class="text-button"><i data-lucide="clipboard-paste"></i> Paste</button><button type="button" id="import-file" class="text-button"><i data-lucide="file-up"></i> Import</button><input id="file-input" type="file" accept=".abc,.txt,text/plain" hidden></div>
       </div>
       <textarea id="abc-editor" class="abc-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
-      <div class="editor-bottom"><span id="editor-message" role="status">Ready to play</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral"><i data-lucide="plus"></i> New</button><button type="button" id="save-tune" class="button-gold"><i data-lucide="save"></i> Save</button></div></div>
-    </section>
+      <div class="editor-bottom"><span id="editor-message" role="status">Ready to play</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral"><i data-lucide="plus"></i> New</button><button type="button" id="export-mp3" class="button-neutral"><i data-lucide="download"></i> Export MP3</button><button type="button" id="save-tune" class="button-gold"><i data-lucide="save"></i> Save</button></div></div>
+      <div id="export-progress" class="export-progress" hidden aria-live="polite">
+        <div class="export-progress-head"><span><i data-lucide="file-audio"></i> MP3 EXPORT</span><output id="export-percent">0%</output></div>
+        <div id="export-progressbar" class="export-progressbar" role="progressbar" aria-label="MP3 export progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="export-fill"></span></div>
+        <div class="export-progress-detail"><span id="export-stage">Preparing export…</span><span id="export-eta">Estimating time…</span></div>
+      </div>
+      </section>
   </div>
 
   <section class="playlist-panel" aria-label="Playlist">
