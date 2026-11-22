@@ -4,13 +4,15 @@ import {readFileSync} from "node:fs";
 import {getNoteName} from "../src/audio.js";
 import {parseABC} from "../src/abc.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "../src/library.js";
+import {LiveRecording,MAX_RECORD_SECONDS,MAX_RECORD_NOTES} from "../src/recorder.js";
+import {createMIDI,downloadScore} from "../src/score-export.js";
 
 test("Play button and physical keyboard actually trigger the sampler",async()=>{
   const data=new Map();
   globalThis.localStorage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
   class Element {
     constructor(id=""){
-      this.id=id;this.value="";this.listeners={};this.style={};this.children=[];
+      this.id=id;this.value="";this.listeners={};this.style={};this.children=[];this.dataset={};
       this.classList={add(){},remove(){}};this.tagName="DIV";
     }
     addEventListener(name,handler){(this.listeners[name]??=[]).push(handler)}
@@ -42,8 +44,10 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
     setReverb(){}
   }
   const script=readFileSync(new URL("../src/main.js",import.meta.url),"utf8").replace(/^import .*;\n/gm,"");
-  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","getNoteName","createIcons","createElement","Play","Pause","SkipBack","SkipForward","Square","Plus","Minus","ClipboardPaste","FileUp","Code2","Save","Check","ListMusic","Volume2","Waves","Trash2","Download","FileAudio","createMP3","downloadMP3","exportFilename","MAX_EXPORT_SECONDS","confirm","setInterval","clearInterval","setTimeout","clearTimeout",script);
-  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,getNoteName,()=>{},()=>new Element(),...Array(18).fill("icon"),async(_sequence,_sampler,progress)=>{progress({stage:"done",percent:100,label:"MP3 ready",eta:0});return new Blob(["mp3"],{type:"audio/mpeg"})},()=>{},title=>title+".mp3",600,()=>true,()=>1,()=>{},()=>0,()=>{});
+  const execute=new Function("document","HandpanSampler","parseABC","EXAMPLES","readLibrary","saveMelody","removeMelody","getTitle","makeId","getNoteName","createIcons","createElement","Play","Pause","SkipBack","SkipForward","Square","Plus","Minus","ClipboardPaste","FileUp","Code2","Save","Check","ListMusic","Volume2","Waves","Trash2","Download","FileAudio","createMP3","downloadMP3","exportFilename","MAX_EXPORT_SECONDS","confirm","setInterval","clearInterval","setTimeout","clearTimeout","LiveRecording","MAX_RECORD_SECONDS","MAX_RECORD_NOTES","createMIDI","downloadScore","performance",script);
+  let now=0;
+  const downloads=[];
+  execute(dom,FakeSampler,parseABC,EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId,getNoteName,()=>{},()=>new Element(),...Array(18).fill("icon"),async(_sequence,_sampler,progress)=>{progress({stage:"done",percent:100,label:"MP3 ready",eta:0});return new Blob(["mp3"],{type:"audio/mpeg"})},()=>{},title=>title+".mp3",600,()=>true,()=>1,()=>{},()=>0,()=>{},LiveRecording,MAX_RECORD_SECONDS,MAX_RECORD_NOTES,createMIDI,(blob,name)=>downloads.push({blob,name}),{now:()=>now});
   assert.equal(get("library").children.length,2);
   assert.match(get("total-time").textContent,/^\d+:\d\d$/);
   assert.equal(get("tune-name").textContent,"Still Water");
@@ -59,6 +63,30 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
   dom.events.keydown[0]({...keyEvent,code:"Semicolon"});
   for(let i=0;i<6;i++)await Promise.resolve();
   assert.equal(hits.at(-1).midi,57);
+  get("record-toggle").listeners.click[0]();
+  for(let i=0;i<8;i++)await Promise.resolve();
+  assert.equal(get("record-label").textContent,"Stop & save");
+  assert.equal(get("play").disabled,true);
+  assert.equal(get("record-status").textContent,"Play your first note to begin");
+  now=10000;
+  dom.events.keydown[0](keyEvent);
+  now=10873;
+  pads.find(p=>p.dataset.midi==="62").listeners.pointerdown[0]({pointerType:"touch"});
+  now=12900;
+  get("record-toggle").listeners.click[0]();
+  assert.equal(get("play").disabled,false);
+  assert.equal(readLibrary().length,3);
+  const recorded=parseABC(readLibrary()[0].abc);
+  assert.deepEqual(recorded.notes.filter(n=>n.pitches.length).map(n=>n.pitches),[[57],[62]]);
+  assert.ok(Math.abs(recorded.notes.filter(n=>n.pitches.length)[1].at-.873)<1e-8);
+  assert.ok(Math.abs(recorded.duration-2.9)<1e-8);
+  assert.equal(get("abc-editor").value,readLibrary()[0].abc);
+  get("export-abc").listeners.click[0]();
+  get("export-midi").listeners.click[0]();
+  assert.match(downloads[0].name,/\.abc$/);
+  assert.equal(await downloads[0].blob.text(),readLibrary()[0].abc);
+  assert.match(downloads[1].name,/\.mid$/);
+  assert.equal(new TextDecoder().decode((await downloads[1].blob.arrayBuffer()).slice(0,4)),"MThd");
 });
 
 test("MP3 export helpers validate filenames, duration and actual acoustic samples", async()=>{

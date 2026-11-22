@@ -53,6 +53,8 @@ No separate downloading or audio transcoding is needed to develop, test or build
 - Nine sampled notes: A3, D4, E4, F4, G4, A4, Bb4, C5, D5; three natural takes per note.
 - Keys: **A S D F G H J K L**; **; ' \\** repeat the first three notes.
 - ABC playback, pause/resume, seeking, next/previous, volume and reverb.
+- Record a live performance from the keyboard or touch pads. The first strike starts the clock; later pauses and timing are retained at millisecond resolution in free-meter ABC. Stop & save stores a new track in the local playlist automatically (up to 10 minutes or 5,000 strikes). No microphone or server is involved.
+- Export any melody as ABC, MIDI or MP3 (with encoding progress).
 - Edit, paste or import ABC scores; store multiple compositions in browser `localStorage`.
 - Supports standard note durations, rests, chords, accidentals, tuplets, simple repeat blocks and broken rhythm. Unsupported ABC constructs show an error.
 

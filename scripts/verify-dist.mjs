@@ -24,4 +24,5 @@ assert.ok(content.includes("samples/"), "sample URLs missing in bundle");
 // JS for the string `from "lucide"` creates false positives in embedded code.
 assert.ok(bundles.every(name=>!name.includes("main.js")), "source entry leaked into bundle");
 assert.ok(html.includes("Export MP3"), "MP3 export UI missing from build");
+assert.ok(html.includes('id="record-toggle"')&&html.includes('id="export-midi"')&&html.includes('id="export-abc"'), "Record and score export controls missing from build");
 console.log("Production dist verified: bundled JS/CSS, export UI, 27 original MP3 samples.");

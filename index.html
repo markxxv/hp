@@ -41,6 +41,11 @@
         </div>
       </div>
       <div class="keyboard-tip"><span>KEYBOARD</span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd><span class="keyboard-more">; ' \ · REPEAT A / D / E</span></div>
+      <div class="record-panel" id="record-panel" data-state="idle">
+        <button type="button" class="record-button" id="record-toggle" aria-pressed="false"><span class="record-indicator" aria-hidden="true"></span><span id="record-label">Record</span></button>
+        <span id="record-status" class="record-status" role="status">Record your live performance</span>
+        <output id="record-time" class="record-time" aria-label="Recording duration">0:00</output>
+      </div>
       <div class="instrument-footer">
         <div class="last-note"><span class="input-label">LAST NOTE</span><strong id="current-note">—</strong></div>
         <label class="slider-control"><span><i data-lucide="volume-2"></i> Volume <output id="volume-display">80%</output></span><span class="slider-meter"><span class="meter-bars" aria-hidden="true"></span><input id="volume" type="range" min="0" max="100" value="80" aria-label="Volume"></span></label>
@@ -67,7 +72,8 @@
         <div><button type="button" id="import-open" class="text-button"><i data-lucide="clipboard-paste"></i> Paste</button><button type="button" id="import-file" class="text-button"><i data-lucide="file-up"></i> Import</button><input id="file-input" type="file" accept=".abc,.txt,text/plain" hidden></div>
       </div>
       <textarea id="abc-editor" class="abc-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
-      <div class="editor-bottom"><span id="editor-message" role="status">Ready to play</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral"><i data-lucide="plus"></i> New</button><button type="button" id="export-mp3" class="button-neutral"><i data-lucide="download"></i> Export MP3</button><button type="button" id="save-tune" class="button-gold"><i data-lucide="save"></i> Save</button></div></div>
+      <div class="editor-bottom"><span id="editor-message" role="status">Ready to play</span><div class="editor-actions"><button type="button" id="new-tune" class="button-neutral"><i data-lucide="plus"></i> New</button><button type="button" id="save-tune" class="button-gold"><i data-lucide="save"></i> Save</button></div></div>
+      <div class="score-exports" role="group" aria-label="Export melody"><span class="input-label"><i data-lucide="download"></i> EXPORT</span><div class="editor-actions"><button type="button" id="export-mp3" class="button-neutral" aria-label="Export MP3">Export MP3</button><button type="button" id="export-midi" class="button-neutral" aria-label="Export MIDI">MIDI</button><button type="button" id="export-abc" class="button-neutral" aria-label="Export ABC">ABC</button></div></div>
       <div id="export-progress" class="export-progress" hidden aria-live="polite">
         <div class="export-progress-head"><span><i data-lucide="file-audio"></i> MP3 EXPORT</span><output id="export-percent">0%</output></div>
         <div id="export-progressbar" class="export-progressbar" role="progressbar" aria-label="MP3 export progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="export-fill"></span></div>

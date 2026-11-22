@@ -4,6 +4,8 @@ import {HandpanSampler, getNoteName} from "./audio.js";
 import {parseABC} from "./abc.js";
 import {createMP3,downloadMP3,exportFilename,MAX_EXPORT_SECONDS} from "./exporter.js";
 import {EXAMPLES,readLibrary,saveMelody,removeMelody,getTitle,makeId} from "./library.js";
+import {LiveRecording,MAX_RECORD_SECONDS,MAX_RECORD_NOTES} from "./recorder.js";
+import {createMIDI,downloadScore} from "./score-export.js";
 
 const $ = id => document.getElementById(id);
 const icon = (name,size=16) => createElement(name,{width:size,height:size,"stroke-width":1.8});
@@ -26,6 +28,9 @@ let selectedId = null;
 let dirty = false;
 let editorDebounce = null;
 let lastMessageError = false;
+let recording=null;
+let recordTimer=null;
+let samplerReady=false;
 
 function message(text, error = false) {
   $("editor-message").textContent = text;
@@ -53,7 +58,7 @@ function renderTransport() {
   $("play-icon").replaceChildren(icon(playing ? Pause : Play,17));
   $("play-label").textContent=playing ? "Pause" : player.status === "paused" ? "Resume" : "Play";
   $("play-state").textContent=labels[player.status] || "READY";
-  playButton.disabled=player.status === "loading";
+  playButton.disabled=!!recording||player.status === "loading";
   $("play").setAttribute("aria-label",$("play-label").textContent);
 }
 function lightPad(midi) {
@@ -146,6 +151,7 @@ async function prepareSound() {
   try {
     sampleStatus("Loading acoustic samples…");
     await sampler.ensureReady((count,total)=>sampleStatus("Loaded "+count+" / "+total+" samples"));
+    samplerReady=true;
     sampleStatus("27 acoustic samples · ready");
     return true;
   } catch(error) {
@@ -155,6 +161,7 @@ async function prepareSound() {
   }
 }
 async function play() {
+  if(recording)return;
   if(player.status==="playing") { pause(); return; }
   if(!player.sequence) { message("Fix the ABC notation before playing",true); return; }
   if(player.status==="loading") return;
@@ -168,8 +175,91 @@ async function play() {
   startClock(offset);
 }
 async function hit(midi) {
-  if(!await prepareSound()) return;
-  if(sampler.hit(midi)) lightPad(midi);
+  const session=recording;
+  if(session?.loading)return;
+  if(!samplerReady||sampler.context?.state!=="running") {
+    if(!await prepareSound()||session!==recording)return;
+  }
+  const now=performance.now();
+  if(sampler.hit(midi)) {
+    lightPad(midi);
+    if(session&&session===recording&&session.take.hit(midi,now)) {
+      if(session.take.count===1)checkpointRecording(session,now);
+      renderRecordClock(now);
+      if(session.take.count>=MAX_RECORD_NOTES)finishRecording();
+    }
+  }
+}
+function renderRecordClock(now=performance.now()) {
+  const take=recording?.take;
+  $("record-time").textContent=formatTime(take?.elapsed(now)/1000);
+  if(!recording)return;
+  if(recording.loading)$("record-status").textContent="Preparing audio…";
+  else if(!take.count)$("record-status").textContent="Play your first note to begin";
+  else $("record-status").textContent=take.count+" notes · Recording";
+  $("record-panel").dataset.state=recording.loading?"loading":take.count?"recording":"waiting";
+}
+function renderRecordControls() {
+  const active=!!recording;
+  $("record-panel").dataset.state=active?"loading":"idle";
+  $("record-toggle").setAttribute("aria-pressed",String(active));
+  $("record-label").textContent=active?"Stop & save":"Record";
+  $("record-status").textContent=active?"Preparing audio…":"Record your live performance";
+  $("record-time").textContent="0:00";
+  for(const id of ["prev","next","stop","seek","new-tune","save-tune","import-open","import-file","export-mp3","export-abc","export-midi"])$(id).disabled=active||(id==="export-mp3"&&exportBusy);
+  $("tempo-down").disabled=active||!player.sequence||player.sequence.tempo<=30;
+  $("tempo-up").disabled=active||!player.sequence||player.sequence.tempo>=240;
+  editor.readOnly=active;
+  $("library").inert=active;
+  renderTransport();
+}
+function checkpointRecording(session,now) {
+  const abc=session.take.toABC(now);
+  if(!abc)return;
+  try {saveMelody(session.id,abc);session.savedCount=session.take.count;}
+  catch { /* Retry on stop; retain the ABC in the editor if storage fails. */ }
+}
+async function startRecording() {
+  if(recording||exportBusy)return;
+  if(dirty&&!confirm("Discard unsaved changes and start a new recording?"))return;
+  clearTimeout(editorDebounce);
+  const session={id:makeId(),take:new LiveRecording("Recording · "+new Date().toLocaleString()),loading:true,savedCount:0};
+  recording=session;
+  stopPlayback();
+  renderRecordControls();
+  $("export-progress").hidden=true;
+  if(!await prepareSound()) {
+    if(recording===session){recording=null;renderRecordControls();}
+    return;
+  }
+  if(recording!==session)return;
+  session.loading=false;
+  renderRecordClock();
+  recordTimer=setInterval(()=>{
+    const now=performance.now();
+    if(recording!==session)return;
+    renderRecordClock(now);
+    if(session.take.elapsed(now)>=MAX_RECORD_SECONDS*1000)finishRecording();
+    else if(session.savedCount!==session.take.count)checkpointRecording(session,now);
+  },1000);
+}
+function finishRecording() {
+  const session=recording;
+  if(!session)return;
+  recording=null;
+  clearInterval(recordTimer);
+  recordTimer=null;
+  renderRecordControls();
+  const abc=session.take.toABC(performance.now());
+  if(!abc){$("record-status").textContent="No notes recorded";return;}
+  let saved=false;
+  try {saveMelody(session.id,abc);saved=true;}
+  catch { /* Keep the score available for manual save/export. */ }
+  useTune(abc,session.id,false);
+  dirty=!saved;
+  $("record-time").textContent=formatTime(player.sequence?.duration);
+  $("record-status").textContent=session.take.count+" notes · "+(saved?"Saved to playlist":"Ready to export");
+  message(saved?"Recording saved to playlist":"Local storage unavailable. Export or copy your recording.",!saved);
 }
 function seekTo(position) {
   if(!player.sequence) return;
@@ -188,8 +278,8 @@ function seekTo(position) {
     renderClock();
   }
 }
-function refreshEditor() {
-  stopPlayback();
+function refreshEditor(silence=true) {
+  stopPlayback({silence});
   player.sequence=null;
   $("tune-name").textContent=getTitle(editor.value);
   try {
@@ -210,15 +300,16 @@ function refreshEditor() {
   renderClock();
   renderLibrary();
 }
-function useTune(text,id=null) {
+function useTune(text,id=null,silence=true) {
   clearTimeout(editorDebounce);
   editor.value=text;
   selectedId=id;
   dirty=false;
-  refreshEditor();
+  refreshEditor(silence);
   renderLibrary();
 }
 function loadEntry(entry) {
+  if(recording)return false;
   if(selectedId===entry.id && !dirty) return true;
   if(dirty && !confirm("Discard unsaved changes?")) return false;
   useTune(entry.abc,entry.id);
@@ -316,6 +407,7 @@ function skipTrack(step) {
   void play();
 }
 function importABC(text) {
+  if(recording)return false;
   if(!text.trim()){message("ABC text is empty",true);return false}
   try{parseABC(text)}catch(error){message("Import failed: "+error.message,true);return false}
   if(dirty && !confirm("Discard unsaved changes?")) return false;
@@ -325,7 +417,7 @@ function importABC(text) {
 }
 
 function adjustTempo(delta) {
-  if(!player.sequence || player.status==="loading") return;
+  if(recording||!player.sequence || player.status==="loading") return;
   const bpm=Math.max(30,Math.min(240,player.sequence.tempo+delta));
   if(bpm===player.sequence.tempo) return;
   const oldDuration=player.sequence.duration;
@@ -370,7 +462,7 @@ function exportProgress({stage,percent,label,eta}) {
 }
 
 async function exportCurrentMP3() {
-  if(exportBusy)return;
+  if(recording||exportBusy)return;
   clearTimeout(editorDebounce);
   let sequence;
   try {
@@ -379,6 +471,7 @@ async function exportCurrentMP3() {
   }catch(error){message(error.message,true);return;}
   exportBusy=true;
   $("export-mp3").disabled=true;
+  $("record-toggle").disabled=true;
   exportProgress({stage:"loading",percent:3,label:"Preparing samples",eta:null});
   try{
     const ready=await prepareSound();
@@ -394,10 +487,26 @@ async function exportCurrentMP3() {
   }finally{
     exportBusy=false;
     $("export-mp3").disabled=false;
+    $("record-toggle").disabled=false;
   }
 }
 
+function exportScore(format) {
+  if(recording)return;
+  try {
+    const sequence=parseABC(editor.value);
+    const filename=exportFilename(sequence.title).replace(/\.mp3$/,"."+format);
+    const blob=format==="abc"?new Blob([editor.value],{type:"text/vnd.abc;charset=utf-8"}):new Blob([createMIDI(sequence)],{type:"audio/midi"});
+    downloadScore(blob,filename);
+    message(filename+" exported successfully.");
+  }catch(error){message("Export failed: "+error.message,true);}
+}
+
 function register() {
+  $("record-toggle").addEventListener("click",()=>recording?finishRecording():void startRecording());
+  $("export-abc").addEventListener("click",()=>exportScore("abc"));
+  $("export-midi").addEventListener("click",()=>exportScore("mid"));
+  globalThis.addEventListener?.("pagehide",()=>{if(recording)checkpointRecording(recording,performance.now());});
   playButton.addEventListener("click",()=>void play());
   $("stop").addEventListener("click",()=>stopPlayback());
   $("prev").addEventListener("click",()=>skipTrack(-1));

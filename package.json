@@ -10,7 +10,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "check": "node --check src/main.js && node --check src/abc.js && node --check src/audio.js && node --check src/library.js && node --check vite.config.js && node --check src/exporter.js && node --check src/mp3.worker.js",
+    "check": "node --check src/main.js && node --check src/abc.js && node --check src/audio.js && node --check src/library.js && node --check vite.config.js && node --check src/exporter.js && node --check src/mp3.worker.js && node --check src/recorder.js && node --check src/score-export.js",
     "test": "node --test",
     "verify": "node scripts/verify-dist.mjs"
   },

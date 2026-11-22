@@ -146,3 +146,19 @@ svg{flex-shrink:0;display:block}
 @keyframes export-render{to{background-position:60px 0}}
 @media(max-width:600px){.editor-actions{flex-wrap:wrap}.editor-actions button{padding:0 10px;font-size:11px}.export-progress{padding:12px}.export-progress-detail{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.export-progress[data-stage="render"] .export-progressbar>span{animation:none}}
+
+.record-panel{display:flex;align-items:center;gap:12px;margin-top:14px;padding:8px;background:#1d1d21;border-radius:10px;min-width:0}
+.record-button{display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:8px;min-height:36px;padding:0 13px;background:#303036;color:#f4f4f5;font-size:11px;font-weight:650;white-space:nowrap}
+.record-button:hover{background:#414147}
+.record-indicator{display:block;width:10px;height:10px;border-radius:50%;background:#ef7777;flex-shrink:0}
+.record-panel:not([data-state="idle"]) .record-button{background:#a84449;color:#fff}
+.record-panel:not([data-state="idle"]) .record-indicator{background:#fff;border-radius:2px}
+.record-status{flex:1;min-width:0;color:#a1a1aa;font-size:11px;line-height:1.4}
+.record-time{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:#e4e4e7;min-width:43px;text-align:right;padding-right:5px}
+.record-panel[data-state="recording"] .record-time{color:#ffa6a6}
+.record-panel[data-state="recording"] .record-status{color:#f0c1c1}
+.track-list[inert]{opacity:.45;pointer-events:none}
+.score-exports{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:10px}
+.score-exports>.input-label{display:flex;align-items:center;gap:7px}
+.score-exports>.input-label svg{width:13px;height:13px}
+@media(max-width:600px){.record-panel{gap:8px}.record-button{padding:0 10px;min-height:40px}.record-status{font-size:10px}.score-exports .editor-actions{width:auto}.score-exports{gap:6px}}
