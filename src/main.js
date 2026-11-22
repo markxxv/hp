@@ -31,6 +31,7 @@ let lastMessageError = false;
 let recording=null;
 let recordTimer=null;
 let samplerReady=false;
+let hitToken=0;
 
 function message(text, error = false) {
   $("editor-message").textContent = text;
@@ -58,7 +59,11 @@ function renderTransport() {
   $("play-icon").replaceChildren(icon(playing ? Pause : Play,17));
   $("play-label").textContent=playing ? "Pause" : player.status === "paused" ? "Resume" : "Play";
   $("play-state").textContent=labels[player.status] || "READY";
-  playButton.disabled=!!recording||player.status === "loading";
+  const unavailable=!!recording||!player.sequence;
+  playButton.disabled=unavailable||player.status === "loading";
+  for(const id of ["stop","seek","save-tune","export-abc","export-midi"])$(id).disabled=unavailable;
+  $("export-mp3").disabled=unavailable||exportBusy;
+  $("new-tune").disabled=!!recording||exportBusy;
   $("play").setAttribute("aria-label",$("play-label").textContent);
 }
 function lightPad(midi) {
@@ -163,7 +168,7 @@ async function prepareSound() {
 async function play() {
   if(recording)return;
   if(player.status==="playing") { pause(); return; }
-  if(!player.sequence) { message("Fix the ABC notation before playing",true); return; }
+  if(!player.sequence) { if(editor.value.trim())message("Fix the ABC notation before playing",true); return; }
   if(player.status==="loading") return;
   const offset=player.status==="paused" ? player.offset : 0;
   const generation=++player.token;
@@ -176,9 +181,10 @@ async function play() {
 }
 async function hit(midi) {
   const session=recording;
+  const token=hitToken;
   if(session?.loading)return;
   if(!samplerReady||sampler.context?.state!=="running") {
-    if(!await prepareSound()||session!==recording)return;
+    if(!await prepareSound()||session!==recording||token!==hitToken)return;
   }
   const now=performance.now();
   if(sampler.hit(midi)) {
@@ -206,7 +212,7 @@ function renderRecordControls() {
   $("record-label").textContent=active?"Stop & save":"Record";
   $("record-status").textContent=active?"Preparing audio…":"Record your live performance";
   $("record-time").textContent="0:00";
-  for(const id of ["prev","next","stop","seek","new-tune","save-tune","import-open","import-file","export-mp3","export-abc","export-midi"])$(id).disabled=active||(id==="export-mp3"&&exportBusy);
+  for(const id of ["prev","next","import-open","import-file"])$(id).disabled=active;
   $("tempo-down").disabled=active||!player.sequence||player.sequence.tempo<=30;
   $("tempo-up").disabled=active||!player.sequence||player.sequence.tempo>=240;
   editor.readOnly=active;
@@ -281,6 +287,17 @@ function seekTo(position) {
 function refreshEditor(silence=true) {
   stopPlayback({silence});
   player.sequence=null;
+  $("tempo-down").disabled=true;
+  $("tempo-up").disabled=true;
+  if(!editor.value.trim()) {
+    $("tune-name").textContent="—";
+    $("tune-tempo").textContent="—";
+    message("Record or import a melody");
+    renderClock();
+    renderTransport();
+    renderLibrary();
+    return;
+  }
   $("tune-name").textContent=getTitle(editor.value);
   try {
     player.sequence=parseABC(editor.value);
@@ -298,6 +315,7 @@ function refreshEditor(silence=true) {
     message(error.message,true);
   }
   renderClock();
+  renderTransport();
   renderLibrary();
 }
 function useTune(text,id=null,silence=true) {
@@ -307,6 +325,25 @@ function useTune(text,id=null,silence=true) {
   dirty=false;
   refreshEditor(silence);
   renderLibrary();
+}
+function newTune() {
+  if(recording||exportBusy)return;
+  if(dirty&&!confirm("Discard unsaved changes?"))return;
+  hitToken++;
+  useTune("");
+  renderRecordControls();
+  for(const pad of pads.values()) {
+    clearTimeout(pad.lightTimer);
+    pad.classList.remove("active");
+  }
+  $("current-note").textContent="—";
+  $("export-progress").hidden=true;
+  delete $("export-progress").dataset.stage;
+  $("export-percent").textContent="0%";
+  $("export-fill").style.width="0%";
+  $("export-progressbar").setAttribute("aria-valuenow","0");
+  $("export-stage").textContent="";
+  $("export-eta").textContent="";
 }
 function loadEntry(entry) {
   if(recording)return false;
@@ -470,7 +507,7 @@ async function exportCurrentMP3() {
     if(sequence.duration>MAX_EXPORT_SECONDS)throw new Error("MP3 export supports melodies up to 10 minutes.");
   }catch(error){message(error.message,true);return;}
   exportBusy=true;
-  $("export-mp3").disabled=true;
+  renderTransport();
   $("record-toggle").disabled=true;
   exportProgress({stage:"loading",percent:3,label:"Preparing samples",eta:null});
   try{
@@ -486,7 +523,7 @@ async function exportCurrentMP3() {
     message("MP3 export failed: "+(error.message||"Unknown error"),true);
   }finally{
     exportBusy=false;
-    $("export-mp3").disabled=false;
+    renderTransport();
     $("record-toggle").disabled=false;
   }
 }
@@ -550,6 +587,7 @@ function register() {
     editorDebounce=setTimeout(refreshEditor,250);
   });
   $("save-tune").addEventListener("click",()=>{
+    if(!editor.value.trim())return;
     clearTimeout(editorDebounce);
     if(!player.sequence) {
       try {player.sequence=parseABC(editor.value)} catch(error){message(error.message,true);return}
@@ -563,11 +601,7 @@ function register() {
       message("Saved to playlist");
     }catch(error){message("Save failed: "+error.message,true)}
   });
-  $("new-tune").addEventListener("click",()=>{
-    if(dirty&&!confirm("Discard unsaved changes?"))return;
-    useTune(["X:1","T:New melody","M:6/8","L:1/8","Q:3/8=56","K:Dm","D2 A E F E | D3 z3 |"].join("\n"));
-    editor.focus();
-  });
+  $("new-tune").addEventListener("click",newTune);
   const dialog=$("import-dialog");
   $("import-open").addEventListener("click",()=>{$("import-editor").value="";dialog.showModal()});
   $("import-close").addEventListener("click",()=>dialog.close());

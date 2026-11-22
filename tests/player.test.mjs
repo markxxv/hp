@@ -87,6 +87,36 @@ test("Play button and physical keyboard actually trigger the sampler",async()=>{
   assert.equal(await downloads[0].blob.text(),readLibrary()[0].abc);
   assert.match(downloads[1].name,/\.mid$/);
   assert.equal(new TextDecoder().decode((await downloads[1].blob.arrayBuffer()).slice(0,4)),"MThd");
+  const savedBeforeNew=readLibrary();
+  get("export-mp3").listeners.click[0]();
+  for(let i=0;i<8;i++)await Promise.resolve();
+  assert.equal(get("export-progress").hidden,false);
+  get("play").listeners.click[0]();
+  for(let i=0;i<8;i++)await Promise.resolve();
+  assert.equal(get("play-state").textContent,"PLAYING");
+  get("new-tune").listeners.click[0]();
+  assert.equal(get("abc-editor").value,"");
+  assert.equal(get("tune-name").textContent,"—");
+  assert.equal(get("tune-tempo").textContent,"—");
+  assert.equal(get("current-note").textContent,"—");
+  assert.equal(get("elapsed").textContent,"0:00");
+  assert.equal(get("total-time").textContent,"0:00");
+  assert.equal(get("record-time").textContent,"0:00");
+  assert.equal(get("record-label").textContent,"Record");
+  assert.equal(get("play-state").textContent,"READY");
+  assert.equal(get("export-progress").hidden,true);
+  for(const id of ["play","stop","seek","tempo-down","tempo-up","save-tune","export-mp3","export-midi","export-abc"])assert.equal(get(id).disabled,true,id);
+  assert.deepEqual(readLibrary(),savedBeforeNew);
+  assert.ok(get("library").children.every(row=>row.className==="track-row"));
+  get("record-toggle").listeners.click[0]();
+  for(let i=0;i<8;i++)await Promise.resolve();
+  assert.equal(get("record-status").textContent,"Play your first note to begin");
+  get("record-toggle").listeners.click[0]();
+  assert.equal(get("abc-editor").value,"");
+  assert.deepEqual(readLibrary(),savedBeforeNew);
+  get("library").children[0].children[2].listeners.click[0]();
+  assert.equal(get("abc-editor").value,savedBeforeNew[0].abc);
+  assert.equal(get("play").disabled,false);
 });
 
 test("MP3 export helpers validate filenames, duration and actual acoustic samples", async()=>{
